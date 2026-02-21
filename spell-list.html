@@ -1,0 +1,143 @@
+<script>
+  function onCastSpell() {
+    const spellPath = dataPath.replace(".data.castSpell", "");
+    const spell = api.getValue(spellPath);
+    const spellName = spell.name || "Spell";
+    const mpCost = parseInt(spell.data?.mpCost, 10) || 0;
+    const sanCost = spell.data?.sanCost || "0";
+    const powCost = parseInt(spell.data?.powCost, 10) || 0;
+
+    // Check MP
+    const currentMp = parseInt(record?.data?.curMp, 10) || 0;
+    if (mpCost > currentMp) {
+      api.showNotification(`Not enough Magic Points! Need ${mpCost}, have ${currentMp}.`, "red", spellName);
+      return;
+    }
+
+    // Deduct MP
+    const fieldsToSet = {};
+    fieldsToSet["data.curMp"] = currentMp - mpCost;
+
+    // Deduct POW if applicable
+    if (powCost > 0) {
+      const currentPow = parseInt(record?.data?.pow, 10) || 0;
+      const newPow = Math.max(0, currentPow - powCost);
+      fieldsToSet["data.pow"] = newPow;
+      fieldsToSet["data.powHalf"] = getHalf(newPow);
+      fieldsToSet["data.powFifth"] = getFifth(newPow);
+    }
+
+    api.setValues(fieldsToSet, () => {
+      // Apply SAN cost if any
+      if (sanCost && sanCost !== "0") {
+        const parsed = parseInt(sanCost, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+          // Flat SAN cost — apply directly
+          const currentSan = parseInt(record?.data?.san, 10) || 0;
+          const newSan = Math.max(0, currentSan - parsed);
+          api.setValues({ "data.san": newSan });
+        } else if (isNaN(parsed)) {
+          // Dice formula for SAN cost — roll it
+          const sanRoll = api.rollInstant(sanCost);
+          const sanLost = sanRoll?.total || 0;
+          const currentSan = parseInt(record?.data?.san, 10) || 0;
+          const newSan = Math.max(0, currentSan - sanLost);
+          api.setValues({ "data.san": newSan });
+        }
+      }
+
+      // Trigger POW roll for casting
+      const pow = parseInt(record?.data?.pow, 10) || 0;
+      const hardPow = getHalf(pow);
+
+      const isOpposedPow = spell.data?.opposedPow || false;
+
+      const spellEffects = spell.data?.effects || [];
+
+      const castMetadata = {
+        isMagic: true,
+        spellName: spellName,
+        mpCost: mpCost,
+        sanCost: sanCost,
+        powCost: powCost,
+        isOpposedPow: isOpposedPow,
+        spellEffects: spellEffects,
+        tokenId: api.getToken()?._id,
+      };
+
+      if (isOpposedPow) {
+        const target = api.getTargets()?.[0]?.token;
+        castMetadata.targetPow = parseInt(target?.data?.pow, 10) || 0;
+      }
+
+      if (record.linked === undefined) {
+        api.promptRoll(`Cast: ${spellName}`, "1d100", [], castMetadata, "magic");
+      } else {
+        api.promptRollForToken(record, `Cast: ${spellName}`, "1d100", [], castMetadata, "magic");
+      }
+    });
+  }
+</script>
+
+<!-- Spell Row -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+  "
+>
+  <!-- Spell Name -->
+  <div style="min-width: 140px; width: 100%">
+    <namefield
+      placeholder="Spell..."
+      size="xs"
+      width="100%"
+      field="name"
+      variant="unstyled"
+      bold="true"
+    ></namefield>
+  </div>
+
+  <!-- MP Cost -->
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="36px"
+    field="mpCost"
+    label="MP"
+    hidecontrols="true"
+    textalign="center"
+  ></numberfield>
+
+  <!-- SAN Cost -->
+  <stringfield
+    field="sanCost"
+    placeholder="0"
+    size="xs"
+    width="50px"
+    label="SAN"
+  ></stringfield>
+
+  <!-- POW Cost -->
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="36px"
+    field="powCost"
+    label="POW"
+    hidecontrols="true"
+    textalign="center"
+  ></numberfield>
+
+  <!-- Cast Button -->
+  <iconbutton
+    field="castSpell"
+    size="md"
+    variant="light"
+    options='[{"icon": "IconWand", "label": "Cast Spell", "value": "cast"}]'
+    onclick="onCastSpell()"
+  ></iconbutton>
+</div>

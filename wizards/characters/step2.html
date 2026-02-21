@@ -1,0 +1,164 @@
+<script>
+  // Step 2: Assign Characteristics
+  // Roll, Point Buy, or Manual depending on method from step1
+
+  function onStep2Load() {
+    const method = api.getValue("data.wizard.method") || "roll";
+    const isRoll = method === "roll";
+    const isPointBuy = method === "pointbuy";
+    const isManual = method === "manual";
+
+    // Show/hide roll buttons based on method
+    api.setHidden(["rollStrBtn", "rollConBtn", "rollSizBtn", "rollDexBtn", "rollAppBtn", "rollIntBtn", "rollPowBtn", "rollEduBtn"], !isRoll);
+    api.setHidden(["pointsRemaining"], !isPointBuy);
+    api.setHidden(["rollAllBtn"], !isRoll);
+
+    if (isPointBuy) {
+      recalcPointBuy();
+    }
+  }
+
+  function rollStat(stat) {
+    const method = api.getValue("data.wizard.method") || "roll";
+    // STR, CON, DEX, APP, POW use 3D6×5
+    // SIZ, INT, EDU use (2D6+6)×5
+    const is2d6 = ["siz", "int", "edu"].includes(stat);
+    const formula = is2d6 ? "2d6+6" : "3d6";
+
+    const result = api.rollInstant(formula);
+    const value = (result?.total || 10) * 5;
+
+    const valuesToSet = {};
+    valuesToSet[`data.wizard.${stat}`] = value;
+    api.setValues(valuesToSet);
+  }
+
+  function rollAll() {
+    const stats3d6 = ["str", "con", "dex", "app", "pow"];
+    const stats2d6 = ["siz", "int", "edu"];
+    const valuesToSet = {};
+
+    stats3d6.forEach((stat) => {
+      const result = api.rollInstant("3d6");
+      valuesToSet[`data.wizard.${stat}`] = (result?.total || 10) * 5;
+    });
+
+    stats2d6.forEach((stat) => {
+      const result = api.rollInstant("2d6+6");
+      valuesToSet[`data.wizard.${stat}`] = (result?.total || 10) * 5;
+    });
+
+    api.setValues(valuesToSet);
+  }
+
+  function onStatChange(value, stat) {
+    const method = api.getValue("data.wizard.method") || "roll";
+    if (method === "pointbuy") {
+      recalcPointBuy();
+    }
+  }
+
+  function recalcPointBuy() {
+    const stats = ["str", "con", "siz", "dex", "app", "int", "pow", "edu"];
+    let total = 0;
+    stats.forEach((stat) => {
+      total += parseInt(api.getValue(`data.wizard.${stat}`), 10) || 0;
+    });
+    const remaining = 460 - total;
+    api.setValue("data.wizard.pointsRemaining", remaining);
+  }
+
+  function onStepEnd() {
+    // Commit characteristics to the character record
+    const stats = ["str", "con", "siz", "dex", "app", "int", "pow", "edu"];
+    const valuesToSet = {};
+
+    stats.forEach((stat) => {
+      const val = parseInt(api.getValue(`data.wizard.${stat}`), 10) || 0;
+      valuesToSet[`data.${stat}`] = val;
+      valuesToSet[`data.${stat}Half`] = Math.floor(val / 2);
+      valuesToSet[`data.${stat}Fifth`] = Math.floor(val / 5);
+    });
+
+    if (Object.keys(valuesToSet).length > 0) {
+      api.setValues(valuesToSet);
+    }
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Characteristics"></label>
+
+  <iconbutton
+    field="rollAllBtn"
+    size="md"
+    variant="default"
+    options='[{"icon": "IconDice", "label": "Roll All", "value": "rollAll"}]'
+    onclick="rollAll()"
+    hidden="true"
+  ></iconbutton>
+
+  <!-- STR -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="str" label="STR" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'str')" onload="onStep2Load()"></numberfield>
+    <iconbutton field="rollStrBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll 3D6×5", "value": "roll"}]' onclick="rollStat('str')" hidden="true"></iconbutton>
+    <label size="xs" label="3D6 × 5"></label>
+  </div>
+
+  <!-- CON -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="con" label="CON" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'con')"></numberfield>
+    <iconbutton field="rollConBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll 3D6×5", "value": "roll"}]' onclick="rollStat('con')" hidden="true"></iconbutton>
+    <label size="xs" label="3D6 × 5"></label>
+  </div>
+
+  <!-- SIZ -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="siz" label="SIZ" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'siz')"></numberfield>
+    <iconbutton field="rollSizBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll (2D6+6)×5", "value": "roll"}]' onclick="rollStat('siz')" hidden="true"></iconbutton>
+    <label size="xs" label="(2D6+6) × 5"></label>
+  </div>
+
+  <!-- DEX -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="dex" label="DEX" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'dex')"></numberfield>
+    <iconbutton field="rollDexBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll 3D6×5", "value": "roll"}]' onclick="rollStat('dex')" hidden="true"></iconbutton>
+    <label size="xs" label="3D6 × 5"></label>
+  </div>
+
+  <!-- APP -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="app" label="APP" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'app')"></numberfield>
+    <iconbutton field="rollAppBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll 3D6×5", "value": "roll"}]' onclick="rollStat('app')" hidden="true"></iconbutton>
+    <label size="xs" label="3D6 × 5"></label>
+  </div>
+
+  <!-- INT -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="int" label="INT" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'int')"></numberfield>
+    <iconbutton field="rollIntBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll (2D6+6)×5", "value": "roll"}]' onclick="rollStat('int')" hidden="true"></iconbutton>
+    <label size="xs" label="(2D6+6) × 5"></label>
+  </div>
+
+  <!-- POW -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="pow" label="POW" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'pow')"></numberfield>
+    <iconbutton field="rollPowBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll 3D6×5", "value": "roll"}]' onclick="rollStat('pow')" hidden="true"></iconbutton>
+    <label size="xs" label="3D6 × 5"></label>
+  </div>
+
+  <!-- EDU -->
+  <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+    <numberfield field="edu" label="EDU" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99" onchange="onStatChange(value, 'edu')"></numberfield>
+    <iconbutton field="rollEduBtn" size="md" variant="default" options='[{"icon": "IconDice", "label": "Roll (2D6+6)×5", "value": "roll"}]' onclick="rollStat('edu')" hidden="true"></iconbutton>
+    <label size="xs" label="(2D6+6) × 5"></label>
+  </div>
+
+  <!-- Point Buy Remaining -->
+  <box field="pointsRemaining" hidden="true">
+    <div style="padding: 4px">
+      <label variant="bold" size="sm" label="Points Remaining:"></label>
+      <numberfield field="pointsRemaining" size="sm" width="70px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+  </box>
+</div>

@@ -1,0 +1,90 @@
+<script>
+  function onDrop(type, recordLink) {
+    if (type === "items") {
+      onDropWeapon(recordLink);
+    }
+  }
+
+  function onDropWeapon(recordLink) {
+    api.getRecord("items", recordLink._id, (itemRecord) => {
+      if (!itemRecord) return;
+      const itemType = itemRecord.data?.type || "gear";
+      if (itemType !== "weapon") {
+        api.showNotification("Only weapons can be added to the combat tab.", "yellow", "Combat");
+        return;
+      }
+
+      // Determine the skill for this weapon
+      const weaponSkill = itemRecord.data?.skill || "Fighting: Brawl";
+      const skillValue = getSkillValue(record, weaponSkill);
+      const isMelee = itemRecord.data?.isMelee !== false; // default melee
+
+      const attackEntry = {
+        _id: generateUuid(),
+        name: itemRecord.name,
+        unidentifiedName: itemRecord.name,
+        recordType: "attack",
+        identified: true,
+        icon: "IconSword",
+        portrait: itemRecord.portrait || "",
+        data: {
+          fromId: itemRecord._id,
+          skillName: weaponSkill,
+          skillValue: skillValue,
+          damage: itemRecord.data?.damage || "1D3",
+          range: itemRecord.data?.range || "",
+          attacksPerRound: itemRecord.data?.attacksPerRound || 1,
+          ammo: itemRecord.data?.ammo || 0,
+          currentAmmo: itemRecord.data?.ammo || 0,
+          malfunction: itemRecord.data?.malfunction || 100,
+          isMelee: isMelee,
+          isImpaling: itemRecord.data?.isImpaling || false,
+        },
+      };
+
+      api.addValue("data.attacks", attackEntry);
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <!-- Combat Header -->
+  <label variant="bold" size="md" label="Weapons & Attacks"></label>
+
+  <!-- Attacks List -->
+  <list
+    listtype="attack_list"
+    field="attacks"
+    variant="striped"
+    height="100%"
+  ></list>
+
+  <divider size="xs"></divider>
+
+  <!-- Quick Reference Stats -->
+  <div style="display: flex; flex-direction: row; gap: 12px; flex-wrap: wrap">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <label variant="bold" size="sm" label="Dodge"></label>
+      <div style="display: flex; flex-direction: row; gap: 4px; align-items: center">
+        <numberfield field="dodgeValue" size="xs" width="42px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+        <numberfield field="dodgeHalf" size="xs" width="36px" hidecontrols="true" textalign="center" editable="false" label="½"></numberfield>
+        <numberfield field="dodgeFifth" size="xs" width="36px" hidecontrols="true" textalign="center" editable="false" label="⅕"></numberfield>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <label variant="bold" size="sm" label="Damage Bonus"></label>
+      <stringfield field="damageBonus" size="sm" width="80px" editable="false"></stringfield>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <label variant="bold" size="sm" label="Build"></label>
+      <numberfield field="build" size="sm" width="50px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <label variant="bold" size="sm" label="Armor"></label>
+      <numberfield field="armor" size="sm" width="50px" hidecontrols="true" textalign="center" minvalue="0"></numberfield>
+    </div>
+  </div>
+</div>

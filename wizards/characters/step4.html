@@ -1,0 +1,66 @@
+<script>
+  // Step 4: Occupation Selection
+  // Drop or select an occupation record
+
+  function onStep4Load() {
+    // Nothing special needed
+  }
+
+  function onOccupationSelected(value) {
+    const selected = value || [];
+    api.setValue("data.wizard.occupationSelection", selected);
+
+    if (selected.length > 0) {
+      api.getRecord("occupations", selected[0]._id, (occRecord) => {
+        if (!occRecord) return;
+        const valuesToSet = {};
+        valuesToSet["data.wizard.occupationName"] = occRecord.name || "";
+        valuesToSet["data.wizard.skillPointFormula"] = occRecord.data?.skillPointFormula || "";
+        valuesToSet["data.wizard.creditRatingRange"] = occRecord.data?.creditRatingRange || "";
+        valuesToSet["data.wizard.occupationSkillsDesc"] = occRecord.data?.occupationSkills || "";
+        api.setValues(valuesToSet);
+      });
+    }
+  }
+
+  function onStepEnd() {
+    const selected = api.getValue("data.wizard.occupationSelection") || [];
+    if (selected.length > 0) {
+      const occId = selected[0]._id;
+      api.getRecord("occupations", occId, (occRecord) => {
+        if (!occRecord) return;
+        // Drop the occupation onto the character (triggers character-main's onDrop)
+        api.dropRecord(occRecord);
+      });
+    }
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Occupation"></label>
+  <label size="sm" label="Select your investigator's occupation. This determines your occupation skill points and Credit Rating range."></label>
+
+  <recordselectlist
+    width="100%"
+    max="1"
+    height="300px"
+    size="sm"
+    field="occupationSelector"
+    label="Select Occupation"
+    onchange="onOccupationSelected(value)"
+    onload="onStep4Load()"
+    query='{"type": "occupations", "query": {}}'
+    searchable="true"
+    selectable="true"
+  ></recordselectlist>
+
+  <divider label="Occupation Details"></divider>
+
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <stringfield field="occupationName" label="Occupation" size="sm" width="200px" editable="false"></stringfield>
+    <stringfield field="skillPointFormula" label="Skill Points" size="sm" width="150px" editable="false"></stringfield>
+    <stringfield field="creditRatingRange" label="Credit Rating" size="sm" width="100px" editable="false"></stringfield>
+  </div>
+
+  <richtextfield field="occupationSkillsDesc" height="120px" editable="false"></richtextfield>
+</div>

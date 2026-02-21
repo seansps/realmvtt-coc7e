@@ -1,0 +1,160 @@
+<script>
+  // Step 8: Final Review — Credit Rating, Cash, Equipment
+  // Set Credit Rating, spending level, and any final notes
+
+  function onStep8Load() {
+    // Show a summary of what was configured
+    const str = parseInt(api.getValue("data.wizard.str"), 10) || 0;
+    const con = parseInt(api.getValue("data.wizard.con"), 10) || 0;
+    const siz = parseInt(api.getValue("data.wizard.siz"), 10) || 0;
+    const dex = parseInt(api.getValue("data.wizard.dex"), 10) || 0;
+    const app = parseInt(api.getValue("data.wizard.app"), 10) || 0;
+    const intVal = parseInt(api.getValue("data.wizard.int"), 10) || 0;
+    const pow = parseInt(api.getValue("data.wizard.pow"), 10) || 0;
+    const edu = parseInt(api.getValue("data.wizard.edu"), 10) || 0;
+    const luck = parseInt(api.getValue("data.wizard.luck"), 10) || 0;
+
+    const summary =
+      `STR ${str} | CON ${con} | SIZ ${siz} | DEX ${dex}\n` +
+      `APP ${app} | INT ${intVal} | POW ${pow} | EDU ${edu}\n` +
+      `Luck: ${luck}`;
+
+    api.setValue("data.wizard.statsSummary", summary);
+  }
+
+  function onCreditRatingChange(value) {
+    // Update spending level and cash based on Credit Rating
+    const cr = parseInt(value, 10) || 0;
+    let spendingLevel = "";
+    let cash = "";
+    let assets = "";
+
+    if (cr === 0) {
+      spendingLevel = "Penniless";
+      cash = "$0.50";
+      assets = "None";
+    } else if (cr <= 9) {
+      spendingLevel = "Poor";
+      cash = "$" + (cr * 1);
+      assets = "$" + (cr * 10);
+    } else if (cr <= 49) {
+      spendingLevel = "Average";
+      cash = "$" + (cr * 2);
+      assets = "$" + (cr * 50);
+    } else if (cr <= 89) {
+      spendingLevel = "Wealthy";
+      cash = "$" + (cr * 5);
+      assets = "$" + (cr * 500);
+    } else if (cr <= 98) {
+      spendingLevel = "Rich";
+      cash = "$" + (cr * 20);
+      assets = "$" + (cr * 2000);
+    } else {
+      spendingLevel = "Super Rich";
+      cash = "$50,000";
+      assets = "$5,000,000+";
+    }
+
+    const valuesToSet = {};
+    valuesToSet["data.wizard.creditRating"] = cr;
+    valuesToSet["data.wizard.spendingLevel"] = spendingLevel;
+    valuesToSet["data.wizard.cashPreview"] = cash;
+    valuesToSet["data.wizard.assetsPreview"] = assets;
+    api.setValues(valuesToSet);
+  }
+
+  function onStepEnd() {
+    const cr = parseInt(api.getValue("data.wizard.creditRating"), 10) || 0;
+    const spendingLevel = api.getValue("data.wizard.spendingLevel") || "";
+    const cash = api.getValue("data.wizard.cashPreview") || "";
+    const assets = api.getValue("data.wizard.assetsPreview") || "";
+    const sex = api.getValue("data.wizard.sex") || "";
+    const residence = api.getValue("data.wizard.residence") || "";
+    const birthplace = api.getValue("data.wizard.birthplace") || "";
+
+    const valuesToSet = {
+      "data.creditRating": cr,
+      "data.spendingLevel": spendingLevel,
+      "data.cash": cash,
+      "data.assets": assets,
+    };
+
+    if (sex) valuesToSet["data.sex"] = sex;
+    if (residence) valuesToSet["data.residence"] = residence;
+    if (birthplace) valuesToSet["data.birthplace"] = birthplace;
+
+    // Update Credit Rating in the skill list
+    api.getRecord("characters", record._id, (currentRecord) => {
+      const skills = currentRecord?.data?.skills || [];
+      for (let i = 0; i < skills.length; i++) {
+        if (skills[i].name === "Credit Rating") {
+          valuesToSet[`data.skills[${i}].data.value`] = cr;
+          valuesToSet[`data.skills[${i}].data.halfValue`] = getHalf(cr);
+          valuesToSet[`data.skills[${i}].data.fifthValue`] = getFifth(cr);
+          break;
+        }
+      }
+
+      // Populate default skills if not already done
+      if (!skills || skills.length === 0) {
+        const skillData = populateDefaultSkills(currentRecord);
+        valuesToSet["data.skills"] = skillData;
+      }
+
+      // Clear wizard data
+      valuesToSet["data.wizard"] = {};
+
+      api.setValues(valuesToSet);
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Final Details"></label>
+
+  <!-- Personal Info -->
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <dropdown
+      field="sex"
+      label="Sex"
+      size="sm"
+      width="100px"
+      onload="onStep8Load()"
+      options='[
+        {"label": "Male", "value": "Male"},
+        {"label": "Female", "value": "Female"},
+        {"label": "Other", "value": "Other"}
+      ]'
+    ></dropdown>
+    <stringfield field="residence" label="Residence" size="sm" width="180px" placeholder="City, State"></stringfield>
+    <stringfield field="birthplace" label="Birthplace" size="sm" width="180px" placeholder="City, State"></stringfield>
+  </div>
+
+  <divider label="Credit Rating & Finances"></divider>
+
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap; align-items: flex-end">
+    <numberfield
+      field="creditRating"
+      label="Credit Rating"
+      size="sm"
+      width="80px"
+      hidecontrols="true"
+      textalign="center"
+      placeholder="0"
+      minvalue="0"
+      maxvalue="99"
+      onchange="onCreditRatingChange(value)"
+    ></numberfield>
+    <stringfield field="spendingLevel" label="Spending Level" size="sm" width="120px" editable="false"></stringfield>
+    <stringfield field="cashPreview" label="Cash" size="sm" width="100px" editable="false"></stringfield>
+    <stringfield field="assetsPreview" label="Assets" size="sm" width="120px" editable="false"></stringfield>
+  </div>
+
+  <label size="xs" label="Set Credit Rating within your occupation's allowed range. This determines your spending level and starting cash."></label>
+
+  <divider label="Characteristics Summary"></divider>
+
+  <richtextfield field="statsSummary" height="60px" editable="false"></richtextfield>
+
+  <label size="sm" label="Review your investigator and click Finish to complete character creation."></label>
+</div>

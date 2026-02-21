@@ -1,0 +1,91 @@
+<script>
+  function onDrop(type, recordLink) {
+    if (type === "items") {
+      onDropItem(recordLink);
+    }
+  }
+
+  function onDropItem(recordLink) {
+    api.getRecord("items", recordLink._id, (itemRecord) => {
+      if (!itemRecord) return;
+
+      // Check if already in inventory (by fromId)
+      const inventory = record?.data?.inventory || [];
+      const existing = inventory.findIndex(
+        (item) => item.data?.fromId === itemRecord._id
+      );
+
+      if (existing >= 0) {
+        // Increment count
+        const currentCount = parseInt(inventory[existing].data?.count, 10) || 1;
+        api.setValues({
+          [`data.inventory.${existing}.data.count`]: currentCount + 1,
+        });
+      } else {
+        // Add new item
+        const inventoryEntry = {
+          _id: generateUuid(),
+          name: itemRecord.name,
+          unidentifiedName: itemRecord.name,
+          recordType: "item",
+          identified: true,
+          icon: "IconBox",
+          data: {
+            fromId: itemRecord._id,
+            type: itemRecord.data?.type || "gear",
+            count: itemRecord.data?.count || 1,
+            carried: "carried",
+            description: itemRecord.data?.description || "",
+            modifiers: itemRecord.data?.modifiers || [],
+            // Weapon fields
+            damage: itemRecord.data?.damage,
+            isMelee: itemRecord.data?.isMelee,
+            isImpaling: itemRecord.data?.isImpaling,
+            skill: itemRecord.data?.skill,
+            // Armor fields
+            armorValue: itemRecord.data?.armorValue,
+          },
+        };
+        api.addValue("data.inventory", inventoryEntry);
+      }
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <!-- Inventory -->
+  <label variant="bold" size="md" label="Gear & Possessions"></label>
+
+  <list
+    listtype="inventory_list"
+    field="inventory"
+    variant="striped"
+    height="100%"
+  ></list>
+
+  <divider size="xs"></divider>
+
+  <!-- Cash & Assets -->
+  <label variant="bold" size="sm" label="Cash & Assets"></label>
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <stringfield field="spendingLevel" label="Spending Level" size="sm" width="120px" placeholder=""></stringfield>
+    <stringfield field="cash" label="Cash" size="sm" width="100px" placeholder="$0"></stringfield>
+    <numberfield field="creditRating" label="Credit Rating" size="sm" width="80px" hidecontrols="true" textalign="center"></numberfield>
+  </div>
+
+  <richtextfield
+    field="assets"
+    placeholder="Property, investments, other assets..."
+    height="80px"
+  ></richtextfield>
+
+  <divider size="xs"></divider>
+
+  <!-- Notes -->
+  <label variant="bold" size="sm" label="Notes"></label>
+  <richtextfield
+    field="notes"
+    placeholder="General notes..."
+    height="150px"
+  ></richtextfield>
+</div>

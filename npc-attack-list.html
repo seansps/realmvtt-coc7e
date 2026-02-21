@@ -1,0 +1,71 @@
+<script>
+  function onRollNpcAttack() {
+    const attackPath = dataPath.replace(".data.rollAttack", "");
+    const attack = api.getValue(attackPath);
+    const weaponName = attack.name || "Attack";
+    const skillValue = parseInt(attack.data?.skillValue, 10) || 0;
+
+    const weaponData = {
+      name: weaponName,
+      damage: attack.data?.damage || "1D3",
+      isImpaling: attack.data?.isImpaling || false,
+      isMelee: attack.data?.isMelee || true,
+    };
+
+    if (weaponData.isMelee) {
+      performOpposedAttack(record, weaponName, skillValue, weaponData);
+    } else {
+      performFirearmAttack(record, weaponName, skillValue, weaponData);
+    }
+  }
+</script>
+
+<!-- NPC Attack Row -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+  "
+>
+  <div style="min-width: 100px; width: 100%">
+    <namefield
+      placeholder="Attack..."
+      size="xs"
+      width="100%"
+      field="name"
+      variant="unstyled"
+      bold="true"
+    ></namefield>
+  </div>
+
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="42px"
+    field="skillValue"
+    label="Skill%"
+    hidecontrols="true"
+    textalign="center"
+  ></numberfield>
+
+  <stringfield
+    field="damage"
+    placeholder="1D6"
+    size="xs"
+    width="65px"
+    label="Damage"
+  ></stringfield>
+
+  <checkbox field="isMelee" label="Melee" size="xs"></checkbox>
+  <checkbox field="isImpaling" label="Impale" size="xs"></checkbox>
+
+  <iconbutton
+    field="rollAttack"
+    size="md"
+    variant="light"
+    options='[{"icon": "D100", "label": "Roll Attack", "value": "roll"}]'
+    onclick="onRollNpcAttack()"
+  ></iconbutton>
+</div>

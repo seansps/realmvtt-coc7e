@@ -1,0 +1,944 @@
+<script>
+  function onLoad() {
+    // Populate default skills if the character has no skills yet
+    const skills = record?.data?.skills || [];
+    if (skills.length === 0) {
+      const defaultSkills = populateDefaultSkills(record);
+      const valuesToSet = {
+        "data.skills": defaultSkills,
+      };
+      api.setValues(valuesToSet, () => {
+        // After skills are set, recalc derived stats
+        const statsToSet = {};
+        recalcDerivedStats(statsToSet, record);
+        if (Object.keys(statsToSet).length > 0) {
+          api.setValues(statsToSet);
+        }
+      });
+    } else {
+      // Just recalc derived stats
+      const statsToSet = {};
+      recalcDerivedStats(statsToSet, record);
+      if (Object.keys(statsToSet).length > 0) {
+        api.setValues(statsToSet);
+      }
+    }
+  }
+
+  function onCharacteristicChange(value, stat) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) return;
+
+    const fieldsToSet = {};
+    fieldsToSet[`data.${stat}Base`] = val;
+    fieldsToSet[`data.${stat}`] = val;
+    fieldsToSet[`data.${stat}Half`] = getHalf(val);
+    fieldsToSet[`data.${stat}Fifth`] = getFifth(val);
+
+    // Recalc all derived stats with the new value
+    api.setValues(fieldsToSet, () => {
+      api.getRecord(record.recordType, record._id, (freshRecord) => {
+        const derivedToSet = {};
+        recalcDerivedStats(derivedToSet, freshRecord);
+
+        // If DEX changed, update Dodge skill base value
+        if (stat === "dex") {
+          updateDodgeBase(freshRecord, derivedToSet);
+        }
+        // If EDU changed, update Language (Own) base value
+        if (stat === "edu") {
+          updateLanguageOwnBase(freshRecord, derivedToSet);
+        }
+
+        if (Object.keys(derivedToSet).length > 0) {
+          api.setValues(derivedToSet);
+        }
+      });
+    });
+  }
+
+  function onAgeChange(value) {
+    const fieldsToSet = {};
+    fieldsToSet["data.age"] = value;
+    api.setValues(fieldsToSet, () => {
+      api.getRecord(record.recordType, record._id, (freshRecord) => {
+        const derivedToSet = {};
+        recalcDerivedStats(derivedToSet, freshRecord);
+        if (Object.keys(derivedToSet).length > 0) {
+          api.setValues(derivedToSet);
+        }
+      });
+    });
+  }
+
+  function onLuckChange(value) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) return;
+    api.setValues({
+      "data.luck": val,
+      "data.luckHalf": getHalf(val),
+      "data.luckFifth": getFifth(val),
+    });
+  }
+
+  function updateDodgeBase(rec, fieldsToSet) {
+    const dex = parseInt(rec?.data?.dex, 10) || 0;
+    const dodgeBase = getHalf(dex);
+    const skills = rec?.data?.skills || [];
+    for (let i = 0; i < skills.length; i++) {
+      if (skills[i].name === "Dodge") {
+        fieldsToSet[`data.skills.${i}.data.baseValue`] = dodgeBase;
+        // Only update value if it equals the old base (not manually modified)
+        const currentBase = skills[i].data?.baseValue || 0;
+        const currentValue = skills[i].data?.value || 0;
+        const allocated = currentValue - currentBase;
+        const newValue = dodgeBase + allocated;
+        fieldsToSet[`data.skills.${i}.data.value`] = newValue;
+        fieldsToSet[`data.skills.${i}.data.halfValue`] = getHalf(newValue);
+        fieldsToSet[`data.skills.${i}.data.fifthValue`] = getFifth(newValue);
+        break;
+      }
+    }
+  }
+
+  function updateLanguageOwnBase(rec, fieldsToSet) {
+    const edu = parseInt(rec?.data?.edu, 10) || 0;
+    const skills = rec?.data?.skills || [];
+    for (let i = 0; i < skills.length; i++) {
+      if (skills[i].name === "Language (Own)") {
+        fieldsToSet[`data.skills.${i}.data.baseValue`] = edu;
+        const currentBase = skills[i].data?.baseValue || 0;
+        const currentValue = skills[i].data?.value || 0;
+        const allocated = currentValue - currentBase;
+        const newValue = edu + allocated;
+        fieldsToSet[`data.skills.${i}.data.value`] = newValue;
+        fieldsToSet[`data.skills.${i}.data.halfValue`] = getHalf(newValue);
+        fieldsToSet[`data.skills.${i}.data.fifthValue`] = getFifth(newValue);
+        break;
+      }
+    }
+  }
+
+  function rollCharacteristic(stat) {
+    const value = parseInt(record?.data?.[stat], 10) || 0;
+    performCharacteristicRoll(record, stat, value);
+  }
+
+  function rollLuck() {
+    const luck = parseInt(record?.data?.luck, 10) || 0;
+    performSkillCheck(record, "Luck", luck, {
+      isLuck: true,
+      cannotPush: true,
+    });
+  }
+
+  function onSanCheckClick() {
+    // Prompt the keeper for SAN loss values
+    const options = [
+      { label: "0/1", value: "0/1" },
+      { label: "0/1D3", value: "0/1D3" },
+      { label: "0/1D4", value: "0/1D4" },
+      { label: "0/1D6", value: "0/1D6" },
+      { label: "1/1D4+1", value: "1/1D4+1" },
+      { label: "1/1D6", value: "1/1D6" },
+      { label: "1/1D6+1", value: "1/1D6+1" },
+      { label: "1/1D8", value: "1/1D8" },
+      { label: "1/1D10", value: "1/1D10" },
+      { label: "1D4/1D10", value: "1D4/1D10" },
+      { label: "1D6/1D20", value: "1D6/1D20" },
+      { label: "1D10/1D100", value: "1D10/1D100" },
+    ];
+
+    const callback = (values) => {
+      if (!values || values.length === 0) return;
+      const selected = values[0];
+      const parts = selected.split("/");
+      const sanLossSuccess = parts[0] || "0";
+      const sanLossFailure = parts[1] || "0";
+      performSanityCheck(record, sanLossSuccess, sanLossFailure);
+    };
+
+    api.showPrompt(
+      "Sanity Check",
+      "SAN Loss",
+      "Select the SAN loss for this check (Success/Failure):",
+      options,
+      null,
+      callback,
+    );
+  }
+
+  function onDrop(type, recordLink) {
+    if (type === "occupations") {
+      onDropOccupation(recordLink);
+    }
+  }
+
+  function onDropOccupation(recordLink) {
+    // Use list-of-1 pattern: add the record to a list so it shows as a
+    // clickable portrait link to the occupation record
+    const occupations = record?.data?.occupations || [];
+    const occupationObj = { ...recordLink.value };
+
+    if (occupations.length > 0) {
+      // Replace existing occupation
+      api.removeValue("data.occupations", 0, () => {
+        api.addValue("data.occupations", occupationObj);
+      });
+    } else {
+      api.addValue("data.occupations", occupationObj);
+    }
+
+    // Unhide the occupations list and set the occupation name field
+    api.setValues({
+      "data.occupation": recordLink.tooltip || "",
+      "fields.occupations.hidden": false,
+    });
+  }
+
+  function onMajorWoundChange(value) {
+    // Major wound applies a penalty die to physical actions
+    // This is tracked in metadata during rolls
+  }
+</script>
+
+<!-- Main Character Sheet Layout -->
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <!-- Header Row: Portrait + Personal Info -->
+  <div
+    style="
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      align-items: flex-start;
+    "
+  >
+    <!-- Portrait -->
+    <portrait field="portrait" width="120px" height="120px"></portrait>
+
+    <!-- Personal Info -->
+    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: flex-end;
+          flex-wrap: wrap;
+        "
+      >
+        <list
+          listtype="occupation_list"
+          field="occupations"
+          hidden="true"
+          width="fit-content"
+          height="36px"
+        ></list>
+        <stringfield
+          field="occupation"
+          label="Occupation"
+          size="sm"
+          width="140px"
+          placeholder="Drop occupation..."
+          editable="false"
+          onload="onLoad()"
+        ></stringfield>
+        <numberfield
+          field="age"
+          label="Age"
+          size="sm"
+          width="80px"
+          placeholder="Age..."
+          hidecontrols="true"
+          textalign="center"
+          onchange="onAgeChange(value)"
+        ></numberfield>
+        <dropdown
+          field="sex"
+          label="Sex"
+          size="sm"
+          width="80px"
+          combo="true"
+          options='[{"label": "Male", "value": "Male"}, {"label": "Female", "value": "Female"}, {"label": "Other", "value": "Other"}]'
+        ></dropdown>
+      </div>
+      <div
+        style="display: flex; flex-direction: row; gap: 4px; flex-wrap: wrap"
+      >
+        <stringfield
+          field="residence"
+          label="Residence"
+          size="xs"
+          width="49%"
+          placeholder=""
+        ></stringfield>
+        <stringfield
+          field="birthplace"
+          label="Birthplace"
+          size="xs"
+          width="49%"
+          placeholder=""
+        ></stringfield>
+      </div>
+    </div>
+  </div>
+
+  <divider size="xs"></divider>
+
+  <!-- Characteristics + Derived Stats Row -->
+  <div style="display: flex; flex-direction: row; gap: 12px; width: 100%">
+    <!-- Characteristics Column -->
+    <div
+      style="display: flex; flex-direction: column; gap: 2px; min-width: 240px"
+    >
+      <label variant="bold" size="sm" label="Characteristics"></label>
+
+      <!-- Column headers -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+          padding-left: 74px;
+        "
+      >
+        <div style="width: 50px; text-align: center">
+          <label size="xs" label="Value"></label>
+        </div>
+        <div style="width: 40px; text-align: center">
+          <label size="xs" label="½"></label>
+        </div>
+        <div style="width: 40px; text-align: center">
+          <label size="xs" label="⅕"></label>
+        </div>
+      </div>
+
+      <!-- STR -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollStr"
+          label="STR"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('str')"
+        ></button>
+        <numberfield
+          field="str"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'str')"
+        ></numberfield>
+        <numberfield
+          field="strHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="strFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- CON -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollCon"
+          label="CON"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('con')"
+        ></button>
+        <numberfield
+          field="con"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'con')"
+        ></numberfield>
+        <numberfield
+          field="conHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="conFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- SIZ -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollSiz"
+          label="SIZ"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('siz')"
+        ></button>
+        <numberfield
+          field="siz"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'siz')"
+        ></numberfield>
+        <numberfield
+          field="sizHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="sizFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- DEX -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollDex"
+          label="DEX"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('dex')"
+        ></button>
+        <numberfield
+          field="dex"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'dex')"
+        ></numberfield>
+        <numberfield
+          field="dexHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="dexFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- APP -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollApp"
+          label="APP"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('app')"
+        ></button>
+        <numberfield
+          field="app"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'app')"
+        ></numberfield>
+        <numberfield
+          field="appHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="appFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- INT -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollInt"
+          label="INT"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('int')"
+        ></button>
+        <numberfield
+          field="int"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'int')"
+        ></numberfield>
+        <numberfield
+          field="intHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="intFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- POW -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollPow"
+          label="POW"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('pow')"
+        ></button>
+        <numberfield
+          field="pow"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'pow')"
+        ></numberfield>
+        <numberfield
+          field="powHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="powFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <!-- EDU -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollEdu"
+          label="EDU"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollCharacteristic('edu')"
+        ></button>
+        <numberfield
+          field="edu"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onCharacteristicChange(value, 'edu')"
+        ></numberfield>
+        <numberfield
+          field="eduHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="eduFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+
+      <divider size="xs"></divider>
+
+      <!-- Luck -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <button
+          field="rollLuckBtn"
+          label="Luck"
+          size="xs"
+          width="70px"
+          color="primary"
+          variant="subtle"
+          onclick="rollLuck()"
+        ></button>
+        <numberfield
+          field="luck"
+          size="xs"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+          onchange="onLuckChange(value)"
+        ></numberfield>
+        <numberfield
+          field="luckHalf"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="luckFifth"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+    </div>
+
+    <!-- Derived Stats Column -->
+    <div
+      style="
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+        min-width: 0;
+      "
+    >
+      <!-- HP -->
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <label variant="bold" size="sm" label="Hit Points"></label>
+        <div
+          style="
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            align-items: center;
+          "
+        >
+          <numberfield
+            field="curHp"
+            label="Cur"
+            size="xs"
+            placeholder="0"
+            width="45px"
+            hidecontrols="true"
+            textalign="center"
+            minvalue="0"
+            maxvaluefield="maxHp"
+          ></numberfield>
+          <div style="height: 24px; display: flex; align-items: center">
+            <divider orientation="vertical" size="xs" color="primary"></divider>
+          </div>
+          <numberfield
+            field="maxHp"
+            size="xs"
+            width="45px"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+            label="Max"
+          ></numberfield>
+          <div style="flex: 1; min-width: 60px">
+            <progressbar
+              field="hpBar"
+              currentvaluefield="curHp"
+              maxvaluefield="maxHp"
+              color="health"
+              width="100%"
+              height="100%"
+              size="lg"
+            ></progressbar>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: row; gap: 8px">
+          <checkbox
+            field="majorWound"
+            label="Major Wound"
+            size="xs"
+            onchange="onMajorWoundChange(value)"
+          ></checkbox>
+          <checkbox field="dying" label="Dying" size="xs"></checkbox>
+          <checkbox
+            field="unconscious"
+            label="Unconscious"
+            size="xs"
+          ></checkbox>
+        </div>
+      </div>
+
+      <!-- Sanity -->
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <label variant="bold" size="sm" label="Sanity"></label>
+        <div
+          style="
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            align-items: center;
+          "
+        >
+          <numberfield
+            field="san"
+            label="Cur"
+            placeholder="0"
+            size="xs"
+            width="45px"
+            hidecontrols="true"
+            textalign="center"
+            minvalue="0"
+            maxvaluefield="maxSan"
+          ></numberfield>
+          <div style="height: 24px; display: flex; align-items: center">
+            <divider orientation="vertical" size="xs" color="primary"></divider>
+          </div>
+          <numberfield
+            field="maxSan"
+            size="xs"
+            width="45px"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+            label="Max"
+          ></numberfield>
+          <div style="flex: 1; min-width: 60px">
+            <progressbar
+              field="sanBar"
+              currentvaluefield="san"
+              maxvaluefield="maxSan"
+              color="blue"
+              width="100%"
+              height="100%"
+              size="lg"
+            ></progressbar>
+          </div>
+          <button
+            field="sanCheckBtn"
+            label="SAN Check"
+            size="xs"
+            color="red"
+            variant="outline"
+            onclick="onSanCheckClick()"
+          ></button>
+        </div>
+        <div style="display: flex; flex-direction: row; gap: 8px">
+          <checkbox
+            field="temporaryInsanity"
+            label="Temp. Insanity"
+            size="xs"
+          ></checkbox>
+          <checkbox
+            field="indefiniteInsanity"
+            label="Indef. Insanity"
+            size="xs"
+          ></checkbox>
+        </div>
+      </div>
+
+      <!-- Magic Points -->
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <label variant="bold" size="sm" label="Magic Points"></label>
+        <div
+          style="
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            align-items: center;
+          "
+        >
+          <numberfield
+            field="curMp"
+            label="Cur"
+            placeholder="0"
+            size="xs"
+            width="45px"
+            hidecontrols="true"
+            textalign="center"
+            minvalue="0"
+            maxvaluefield="maxMp"
+          ></numberfield>
+          <div style="height: 24px; display: flex; align-items: center">
+            <divider orientation="vertical" size="xs" color="primary"></divider>
+          </div>
+          <numberfield
+            field="maxMp"
+            size="xs"
+            width="45px"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+            label="Max"
+          ></numberfield>
+          <div style="flex: 1; min-width: 60px">
+            <progressbar
+              field="mpBar"
+              currentvaluefield="curMp"
+              maxvaluefield="maxMp"
+              color="violet"
+              width="100%"
+              height="100%"
+              size="lg"
+            ></progressbar>
+          </div>
+        </div>
+      </div>
+
+      <divider size="xs"></divider>
+
+      <!-- Damage Bonus, Build, Move Rate -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: flex-end;
+        "
+      >
+        <stringfield
+          field="damageBonus"
+          label="Damage Bonus"
+          size="xs"
+          width="100px"
+          editable="false"
+        ></stringfield>
+        <numberfield
+          field="build"
+          label="Build"
+          size="xs"
+          width="60px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+        <numberfield
+          field="mov"
+          label="Move Rate"
+          size="xs"
+          width="90px"
+          hidecontrols="true"
+          textalign="center"
+          editable="false"
+        ></numberfield>
+      </div>
+    </div>
+  </div>
+</div>

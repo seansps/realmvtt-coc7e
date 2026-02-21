@@ -1,0 +1,114 @@
+<script>
+  function onSpecValueChange(value) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) return;
+
+    const pathToSpec = dataPath.replace(".data.value", "");
+    api.setValues({
+      [`${pathToSpec}.data.value`]: val,
+      [`${pathToSpec}.data.halfValue`]: getHalf(val),
+      [`${pathToSpec}.data.fifthValue`]: getFifth(val),
+    });
+  }
+
+  function onRollSpecialization() {
+    const specDataPath = dataPath.replace(".data.rollSpec", "");
+    const spec = api.getValue(specDataPath);
+    const specName = spec.name || "Specialization";
+    const specValue = spec.data?.value || 0;
+    const cannotPush = spec.data?.cannotPush || false;
+
+    performSkillCheck(record, specName, specValue, {
+      cannotPush: cannotPush,
+    });
+  }
+
+  function onSpecCheckChange(value) {
+    // Improvement check mark toggled
+  }
+
+  function onClickSpec(value) {
+    const specName = value;
+    api.getRecordByTypeAndName("skills", specName, (skillRecord) => {
+      if (skillRecord) {
+        api.openRecord(skillRecord);
+      }
+    });
+  }
+</script>
+
+<!-- Specialization Row -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+  "
+>
+  <!-- Improvement Check -->
+  <checkbox
+    field="checked"
+    size="xs"
+    onchange="onSpecCheckChange(value)"
+  ></checkbox>
+
+  <!-- Specialization Name -->
+  <div style="min-width: 120px; width: 100%">
+    <namefield
+      placeholder="Specialization..."
+      size="xs"
+      width="100%"
+      field="namefield"
+      variant="unstyled"
+      onclick="onClickSpec(value)"
+    ></namefield>
+  </div>
+
+  <!-- Values -->
+  <div
+    style="
+      display: flex;
+      flex-direction: row;
+      gap: 2px;
+      align-items: center;
+      margin-left: auto;
+    "
+  >
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="42px"
+      field="value"
+      hidecontrols="true"
+      textalign="center"
+      onchange="onSpecValueChange(value)"
+    ></numberfield>
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="36px"
+      field="halfValue"
+      hidecontrols="true"
+      textalign="center"
+      editable="false"
+    ></numberfield>
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="36px"
+      field="fifthValue"
+      hidecontrols="true"
+      textalign="center"
+      editable="false"
+    ></numberfield>
+    <iconbutton
+      field="rollSpec"
+      size="md"
+      variant="light"
+      options='[{"icon": "D100", "label": "Roll", "value": "roll"}]'
+      onclick="onRollSpecialization()"
+    ></iconbutton>
+  </div>
+</div>

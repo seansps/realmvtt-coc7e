@@ -1,0 +1,127 @@
+<script>
+  function onTypeChange(value) {
+    const isWeapon = value === "weapon";
+    const isArmor = value === "armor";
+    const isTome = value === "tome";
+    const isArtifact = value === "artifact";
+    const isGear = !isWeapon && !isArmor && !isTome && !isArtifact;
+
+    api.setValues({
+      // Weapon fields
+      "fields.damage.hidden": !isWeapon,
+      "fields.range.hidden": !isWeapon,
+      "fields.attacksPerRound.hidden": !isWeapon,
+      "fields.ammo.hidden": !isWeapon,
+      "fields.malfunction.hidden": !isWeapon,
+      "fields.skill.hidden": !isWeapon,
+      "fields.isMelee.hidden": !isWeapon,
+      "fields.isImpaling.hidden": !isWeapon,
+      // Armor fields
+      "fields.armorValue.hidden": !isArmor,
+      // Tome fields
+      "fields.mythosGain.hidden": !isTome,
+      "fields.sanCost.hidden": !isTome,
+      "fields.studyTime.hidden": !isTome,
+      "fields.spellsContained.hidden": !isTome,
+      "fields.tomeLanguage.hidden": !isTome,
+      // Artifact fields
+      "fields.artifactPowers.hidden": !isArtifact,
+      "fields.artifactSanCost.hidden": !isArtifact,
+      // Common fields
+      "fields.count.hidden": isWeapon || isArmor,
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <div style="display: flex; gap: 8px">
+    <div style="width: 100px; height: 100px; min-width: 100px; min-height: 100px">
+      <portrait width="100px" height="100px" field="portrait"></portrait>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; width: 100%">
+      <dropdown
+    field="type"
+    label="Item Type"
+    size="sm"
+    width="200px"
+    placeholder="Select type..."
+    onchange="onTypeChange(value)"
+    options='[
+      {"label": "Weapon", "value": "weapon"},
+      {"label": "Armor", "value": "armor"},
+      {"label": "Gear", "value": "gear"},
+      {"label": "Tome", "value": "tome"},
+      {"label": "Artifact", "value": "artifact"}
+    ]'
+  ></dropdown>
+    </div>
+  </div>
+
+  <!-- Common -->
+  <numberfield
+    field="count"
+    label="Quantity"
+    size="sm"
+    width="60px"
+    hidecontrols="true"
+    textalign="center"
+    placeholder="1"
+  ></numberfield>
+
+  <!-- Weapon Fields -->
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <stringfield field="damage" label="Damage" size="sm" width="100px" placeholder="1D6" hidden="true"></stringfield>
+    <stringfield field="range" label="Range" size="sm" width="80px" placeholder="" hidden="true"></stringfield>
+    <numberfield field="attacksPerRound" label="Attacks/Round" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="1" hidden="true"></numberfield>
+    <numberfield field="ammo" label="Ammo" size="sm" width="60px" hidecontrols="true" textalign="center" placeholder="0" hidden="true"></numberfield>
+    <numberfield field="malfunction" label="Malfunction" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="100" hidden="true"></numberfield>
+  </div>
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <stringfield field="skill" label="Skill" size="sm" width="180px" placeholder="Fighting: Brawl" hidden="true"></stringfield>
+    <checkbox field="isMelee" label="Melee Weapon" size="sm" hidden="true"></checkbox>
+    <checkbox field="isImpaling" label="Impaling" size="sm" hidden="true"></checkbox>
+  </div>
+
+  <!-- Armor Fields -->
+  <numberfield field="armorValue" label="Armor Points" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="0" hidden="true"></numberfield>
+
+  <!-- Tome Fields -->
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <numberfield field="mythosGain" label="Mythos Gain" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="0" hidden="true"></numberfield>
+    <stringfield field="sanCost" label="SAN Cost" size="sm" width="80px" placeholder="0" hidden="true"></stringfield>
+    <stringfield field="studyTime" label="Study Time" size="sm" width="120px" placeholder="" hidden="true"></stringfield>
+    <stringfield field="tomeLanguage" label="Language" size="sm" width="120px" placeholder="" hidden="true"></stringfield>
+  </div>
+  <richtextfield
+    field="spellsContained"
+    placeholder="Spells contained in this tome..."
+    height="100px"
+    hidden="true"
+  ></richtextfield>
+
+  <!-- Artifact Fields -->
+  <stringfield field="artifactSanCost" label="SAN Cost" size="sm" width="80px" placeholder="0" hidden="true"></stringfield>
+  <richtextfield
+    field="artifactPowers"
+    placeholder="Describe the artifact's powers and properties..."
+    height="150px"
+    hidden="true"
+  ></richtextfield>
+
+  <!-- Modifiers -->
+  <divider label="Modifiers"></divider>
+  <list
+    listtype="modifier_list"
+    field="modifiers"
+    variant="striped"
+    height="100%"
+  ></list>
+
+  <!-- Description (all types) -->
+  <divider label="Description"></divider>
+  <richtextfield
+    field="description"
+    placeholder="Item description..."
+    height="150px"
+  ></richtextfield>
+</div>

@@ -1,0 +1,66 @@
+<script>
+  function onCountChange(value) {
+    // Quantity changed
+  }
+
+  function onCarriedChange(value) {
+    // When equip status changes, recalc stat modifiers
+    // Fetch fresh record to pick up the new carried value
+    api.getRecord(record.recordType, record._id, (freshRecord) => {
+      const fieldsToSet = {};
+      recalcStatModifiers(fieldsToSet, freshRecord);
+      if (Object.keys(fieldsToSet).length > 0) {
+        api.setValues(fieldsToSet);
+      }
+    });
+  }
+</script>
+
+<!-- Inventory Item Row -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+  "
+>
+  <!-- Item Name -->
+  <div style="min-width: 140px; width: 100%">
+    <namefield
+      placeholder="Item..."
+      size="xs"
+      width="100%"
+      field="name"
+      variant="unstyled"
+      bold="true"
+    ></namefield>
+  </div>
+
+  <!-- Quantity -->
+  <numberfield
+    placeholder="1"
+    size="xs"
+    width="40px"
+    field="count"
+    label="Qty"
+    hidecontrols="true"
+    textalign="center"
+    onchange="onCountChange(value)"
+  ></numberfield>
+
+  <!-- Carried -->
+  <dropdown
+    field="carried"
+    size="xs"
+    width="90px"
+    label="Status"
+    options='[
+      {"label": "Carried", "value": "carried"},
+      {"label": "Equipped", "value": "equipped"},
+      {"label": "Stored", "value": "stored"}
+    ]'
+    onchange="onCarriedChange(value)"
+  ></dropdown>
+</div>

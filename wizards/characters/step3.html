@@ -1,0 +1,155 @@
+<script>
+  // Step 3: Age, Luck & Derived Stats
+  // Set age, roll luck, see derived stats calculated automatically
+
+  function onStep3Load() {
+    recalcPreview();
+  }
+
+  function onAgeChange(value) {
+    api.setValue("data.wizard.age", value);
+    recalcPreview();
+  }
+
+  function rollLuck() {
+    const result = api.rollInstant("3d6");
+    const luck = (result?.total || 10) * 5;
+    api.setValue("data.wizard.luck", luck);
+  }
+
+  function recalcPreview() {
+    const str = parseInt(api.getValue("data.wizard.str"), 10) || 0;
+    const con = parseInt(api.getValue("data.wizard.con"), 10) || 0;
+    const siz = parseInt(api.getValue("data.wizard.siz"), 10) || 0;
+    const dex = parseInt(api.getValue("data.wizard.dex"), 10) || 0;
+    const pow = parseInt(api.getValue("data.wizard.pow"), 10) || 0;
+    const age = parseInt(api.getValue("data.wizard.age"), 10) || 20;
+
+    // HP = (CON + SIZ) / 10
+    const maxHp = Math.floor((con + siz) / 10);
+    // MP = POW / 5
+    const maxMp = Math.floor(pow / 5);
+    // SAN = POW
+    const san = pow;
+    // DB & Build
+    const { db, build } = getDamageBonusAndBuild(str + siz);
+    // MOV
+    const mov = getMoveRate(str, dex, siz, age);
+
+    const valuesToSet = {};
+    valuesToSet["data.wizard.previewHp"] = maxHp;
+    valuesToSet["data.wizard.previewMp"] = maxMp;
+    valuesToSet["data.wizard.previewSan"] = san;
+    valuesToSet["data.wizard.previewDb"] = db;
+    valuesToSet["data.wizard.previewBuild"] = build;
+    valuesToSet["data.wizard.previewMov"] = mov;
+    api.setValues(valuesToSet);
+  }
+
+  function onStepEnd() {
+    const age = parseInt(api.getValue("data.wizard.age"), 10) || 20;
+    const luck = parseInt(api.getValue("data.wizard.luck"), 10) || 0;
+
+    const str = parseInt(api.getValue("data.wizard.str"), 10) || 0;
+    const con = parseInt(api.getValue("data.wizard.con"), 10) || 0;
+    const siz = parseInt(api.getValue("data.wizard.siz"), 10) || 0;
+    const dex = parseInt(api.getValue("data.wizard.dex"), 10) || 0;
+    const pow = parseInt(api.getValue("data.wizard.pow"), 10) || 0;
+
+    const maxHp = Math.floor((con + siz) / 10);
+    const maxMp = Math.floor(pow / 5);
+    const san = pow;
+    const { db, build } = getDamageBonusAndBuild(str + siz);
+    const mov = getMoveRate(str, dex, siz, age);
+
+    const valuesToSet = {
+      "data.age": String(age),
+      "data.luck": luck,
+      "data.luckHalf": getHalf(luck),
+      "data.luckFifth": getFifth(luck),
+      "data.maxHp": maxHp,
+      "data.curHp": maxHp,
+      "data.maxMp": maxMp,
+      "data.curMp": maxMp,
+      "data.san": san,
+      "data.maxSan": 99,
+      "data.sanDayStart": san,
+      "data.damageBonus": db,
+      "data.build": build,
+      "data.mov": mov,
+      // Dodge base = DEX/2
+      "data.dodgeValue": getHalf(dex),
+      "data.dodgeHalf": getHalf(getHalf(dex)),
+      "data.dodgeFifth": getFifth(getHalf(dex)),
+    };
+
+    api.setValues(valuesToSet);
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Age, Luck & Derived Stats"></label>
+
+  <div style="display: flex; flex-direction: row; gap: 8px; align-items: flex-end">
+    <numberfield
+      field="age"
+      label="Age"
+      size="sm"
+      width="70px"
+      hidecontrols="true"
+      textalign="center"
+      placeholder="20"
+      defaultvalue="20"
+      minvalue="15"
+      maxvalue="89"
+      onchange="onAgeChange(value)"
+      onload="onStep3Load()"
+    ></numberfield>
+    <label size="xs" label="Age affects Move Rate and may adjust characteristics."></label>
+  </div>
+
+  <divider size="xs"></divider>
+
+  <div style="display: flex; flex-direction: row; gap: 8px; align-items: flex-end">
+    <numberfield field="luck" label="Luck" size="sm" width="70px" hidecontrols="true" textalign="center" placeholder="0" minvalue="1" maxvalue="99"></numberfield>
+    <iconbutton
+      field="rollLuckBtn"
+      size="md"
+      variant="default"
+      options='[{"icon": "IconDice", "label": "Roll 3D6×5", "value": "roll"}]'
+      onclick="rollLuck()"
+    ></iconbutton>
+    <label size="xs" label="3D6 × 5"></label>
+  </div>
+
+  <divider label="Derived Stats Preview"></divider>
+
+  <div style="display: flex; flex-direction: row; gap: 12px; flex-wrap: wrap">
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
+      <label variant="bold" size="xs" label="HP"></label>
+      <numberfield field="previewHp" size="sm" width="50px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
+      <label variant="bold" size="xs" label="MP"></label>
+      <numberfield field="previewMp" size="sm" width="50px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
+      <label variant="bold" size="xs" label="SAN"></label>
+      <numberfield field="previewSan" size="sm" width="50px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
+      <label variant="bold" size="xs" label="DB"></label>
+      <stringfield field="previewDb" size="sm" width="60px" editable="false"></stringfield>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
+      <label variant="bold" size="xs" label="Build"></label>
+      <numberfield field="previewBuild" size="sm" width="50px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
+      <label variant="bold" size="xs" label="MOV"></label>
+      <numberfield field="previewMov" size="sm" width="50px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+    </div>
+  </div>
+
+  <label size="xs" label="Starting SAN equals POW. HP = (CON+SIZ)/10. MP = POW/5."></label>
+</div>

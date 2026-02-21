@@ -1,0 +1,124 @@
+<script>
+  // Step 6: Personal Interest Skill Points
+  // INT × 2 points to allocate to any non-Cthulhu Mythos skills
+
+  function onStep6Load() {
+    const intVal = parseInt(api.getValue("data.wizard.int"), 10) || 0;
+    const totalPoints = intVal * 2;
+    api.setValue("data.wizard.persSkillPointsTotal", totalPoints);
+    recalcPersPoints();
+  }
+
+  function recalcPersPoints() {
+    const total = parseInt(api.getValue("data.wizard.persSkillPointsTotal"), 10) || 0;
+    let spent = 0;
+
+    // Sum all personal interest allocations
+    const allocations = api.getValue("data.wizard.persSkillAllocations") || {};
+    for (const key in allocations) {
+      spent += parseInt(allocations[key], 10) || 0;
+    }
+
+    const remaining = total - spent;
+    api.setValue("data.wizard.persSkillPointsRemaining", remaining);
+  }
+
+  function onPersSkillAllocationChange(value, skillName) {
+    const allocations = api.getValue("data.wizard.persSkillAllocations") || {};
+    allocations[skillName] = parseInt(value, 10) || 0;
+    api.setValue("data.wizard.persSkillAllocations", allocations);
+    recalcPersPoints();
+  }
+
+  function onStepEnd() {
+    // Apply personal interest skill allocations to character's skill list
+    const allocations = api.getValue("data.wizard.persSkillAllocations") || {};
+
+    api.getRecord("characters", record._id, (currentRecord) => {
+      const skills = currentRecord?.data?.skills || [];
+      const valuesToSet = {};
+
+      for (const skillName in allocations) {
+        const points = parseInt(allocations[skillName], 10) || 0;
+        if (points <= 0) continue;
+
+        for (let i = 0; i < skills.length; i++) {
+          if (skills[i].name === skillName) {
+            const currentValue = parseInt(skills[i].data?.value, 10) || 0;
+            const newValue = currentValue + points;
+            valuesToSet[`data.skills[${i}].data.value`] = newValue;
+            valuesToSet[`data.skills[${i}].data.halfValue`] = getHalf(newValue);
+            valuesToSet[`data.skills[${i}].data.fifthValue`] = getFifth(newValue);
+            break;
+          }
+          // Check specializations
+          const specs = skills[i].data?.specializations || [];
+          for (let j = 0; j < specs.length; j++) {
+            if (specs[j].name === skillName) {
+              const currentValue = parseInt(specs[j].data?.value, 10) || 0;
+              const newValue = currentValue + points;
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.value`] = newValue;
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.halfValue`] = getHalf(newValue);
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.fifthValue`] = getFifth(newValue);
+              break;
+            }
+          }
+        }
+      }
+
+      if (Object.keys(valuesToSet).length > 0) {
+        api.setValues(valuesToSet);
+      }
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Personal Interest Skills"></label>
+
+  <div style="display: flex; flex-direction: row; gap: 8px; align-items: center">
+    <label size="sm" label="Total Points (INT × 2):"></label>
+    <numberfield field="persSkillPointsTotal" size="sm" width="60px" hidecontrols="true" textalign="center" editable="false" onload="onStep6Load()"></numberfield>
+    <label size="sm" label="Remaining:"></label>
+    <numberfield field="persSkillPointsRemaining" size="sm" width="60px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+  </div>
+
+  <label size="xs" label="Allocate personal interest points to any skills except Cthulhu Mythos. These points stack with occupation points already allocated."></label>
+
+  <divider size="xs"></divider>
+
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill1Name" label="Skill" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill1Pts" label="Points" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill1Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill2Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill2Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill2Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill3Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill3Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill3Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill4Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill4Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill4Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill5Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill5Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill5Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill6Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill6Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill6Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill7Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill7Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill7Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="persSkill8Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="persSkill8Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onPersSkillAllocationChange(value, api.getValue('data.wizard.persSkill8Name'))"></numberfield>
+    </div>
+  </div>
+</div>

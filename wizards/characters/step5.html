@@ -1,0 +1,172 @@
+<script>
+  // Step 5: Occupation Skill Points
+  // Allocate occupation skill points to skills
+  // Formula comes from occupation (e.g., "EDU × 4", "EDU × 2 + APP × 2")
+
+  function onStep5Load() {
+    // Calculate total occupation skill points from the formula
+    const formula = api.getValue("data.wizard.skillPointFormula") || "EDU × 4";
+    const totalPoints = calculateSkillPoints(formula);
+    api.setValue("data.wizard.occSkillPointsTotal", totalPoints);
+    recalcOccPoints();
+  }
+
+  function calculateSkillPoints(formula) {
+    // Parse formulas like "EDU × 4", "EDU × 2 + DEX × 2", "EDU × 2 + APP × 2"
+    const str = parseInt(api.getValue("data.wizard.str"), 10) || 0;
+    const con = parseInt(api.getValue("data.wizard.con"), 10) || 0;
+    const siz = parseInt(api.getValue("data.wizard.siz"), 10) || 0;
+    const dex = parseInt(api.getValue("data.wizard.dex"), 10) || 0;
+    const app = parseInt(api.getValue("data.wizard.app"), 10) || 0;
+    const intVal = parseInt(api.getValue("data.wizard.int"), 10) || 0;
+    const pow = parseInt(api.getValue("data.wizard.pow"), 10) || 0;
+    const edu = parseInt(api.getValue("data.wizard.edu"), 10) || 0;
+
+    const stats = { STR: str, CON: con, SIZ: siz, DEX: dex, APP: app, INT: intVal, POW: pow, EDU: edu };
+
+    // Normalize: replace × with *, strip whitespace
+    let normalized = formula.toUpperCase().replace(/×/g, "*").replace(/\s+/g, "");
+
+    let total = 0;
+    // Split on + to get terms like "EDU*4", "DEX*2"
+    const terms = normalized.split("+");
+    for (const term of terms) {
+      if (term.includes("*")) {
+        const parts = term.split("*");
+        const statName = parts[0].trim();
+        const multiplier = parseInt(parts[1], 10) || 1;
+        const statValue = stats[statName] || 0;
+        total += statValue * multiplier;
+      } else {
+        // Just a number
+        total += parseInt(term, 10) || 0;
+      }
+    }
+
+    return total;
+  }
+
+  function onOccSkillChange(value, skillName) {
+    recalcOccPoints();
+  }
+
+  function recalcOccPoints() {
+    const total = parseInt(api.getValue("data.wizard.occSkillPointsTotal"), 10) || 0;
+    let spent = 0;
+
+    // Sum all occupation skill allocations
+    const allocations = api.getValue("data.wizard.occSkillAllocations") || {};
+    for (const key in allocations) {
+      spent += parseInt(allocations[key], 10) || 0;
+    }
+
+    const remaining = total - spent;
+    api.setValue("data.wizard.occSkillPointsRemaining", remaining);
+  }
+
+  function onSkillAllocationChange(value, skillName) {
+    // Store allocation for this skill
+    const allocations = api.getValue("data.wizard.occSkillAllocations") || {};
+    allocations[skillName] = parseInt(value, 10) || 0;
+    api.setValue("data.wizard.occSkillAllocations", allocations);
+    recalcOccPoints();
+  }
+
+  function onStepEnd() {
+    // Apply occupation skill allocations to the character's skill list
+    const allocations = api.getValue("data.wizard.occSkillAllocations") || {};
+
+    api.getRecord("characters", record._id, (currentRecord) => {
+      const skills = currentRecord?.data?.skills || [];
+      const valuesToSet = {};
+
+      for (const skillName in allocations) {
+        const points = parseInt(allocations[skillName], 10) || 0;
+        if (points <= 0) continue;
+
+        // Find the skill in the character's skill list
+        for (let i = 0; i < skills.length; i++) {
+          if (skills[i].name === skillName) {
+            const baseValue = parseInt(skills[i].data?.baseValue, 10) || 0;
+            const newValue = baseValue + points;
+            valuesToSet[`data.skills[${i}].data.value`] = newValue;
+            valuesToSet[`data.skills[${i}].data.halfValue`] = getHalf(newValue);
+            valuesToSet[`data.skills[${i}].data.fifthValue`] = getFifth(newValue);
+            valuesToSet[`data.skills[${i}].data.isOccupation`] = true;
+            break;
+          }
+          // Check specializations
+          const specs = skills[i].data?.specializations || [];
+          for (let j = 0; j < specs.length; j++) {
+            if (specs[j].name === skillName) {
+              const baseValue = parseInt(specs[j].data?.baseValue, 10) || 0;
+              const newValue = baseValue + points;
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.value`] = newValue;
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.halfValue`] = getHalf(newValue);
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.fifthValue`] = getFifth(newValue);
+              valuesToSet[`data.skills[${i}].data.specializations[${j}].data.isOccupation`] = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (Object.keys(valuesToSet).length > 0) {
+        api.setValues(valuesToSet);
+      }
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Occupation Skill Points"></label>
+
+  <div style="display: flex; flex-direction: row; gap: 8px; align-items: center">
+    <label size="sm" label="Total Points:"></label>
+    <numberfield field="occSkillPointsTotal" size="sm" width="60px" hidecontrols="true" textalign="center" editable="false" onload="onStep5Load()"></numberfield>
+    <label size="sm" label="Remaining:"></label>
+    <numberfield field="occSkillPointsRemaining" size="sm" width="60px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+  </div>
+
+  <label size="xs" label="Allocate points to your occupation skills below. Enter the number of points to add to each skill's base value. You can also add points to specialization skills."></label>
+
+  <divider size="xs"></divider>
+
+  <label size="sm" label="Enter point allocations for each skill. Refer to your occupation description for which skills are valid."></label>
+
+  <!-- Common occupation skills — users type skill name and points -->
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill1Name" label="Skill" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill1Pts" label="Points" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill1Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill2Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill2Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill2Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill3Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill3Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill3Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill4Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill4Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill4Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill5Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill5Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill5Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill6Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill6Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill6Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill7Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill7Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill7Name'))"></numberfield>
+    </div>
+    <div style="display: flex; flex-direction: row; gap: 4px; align-items: flex-end">
+      <stringfield field="occSkill8Name" size="xs" width="160px" placeholder="Skill name..."></stringfield>
+      <numberfield field="occSkill8Pts" size="xs" width="60px" hidecontrols="true" textalign="center" placeholder="0" onchange="onSkillAllocationChange(value, api.getValue('data.wizard.occSkill8Name'))"></numberfield>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,162 @@
+<script>
+  function onRollAttack() {
+    const attackPath = dataPath.replace(".data.rollAttack", "");
+    const attack = api.getValue(attackPath);
+    const weaponName = attack.name || "Attack";
+    const skillValue = parseInt(attack.data?.skillValue, 10) || 0;
+    const isMelee = attack.data?.isMelee || false;
+    const isFirearm = !isMelee;
+
+    const weaponData = {
+      name: weaponName,
+      damage: attack.data?.damage || "1D3",
+      range: attack.data?.range || "",
+      attacksPerRound: attack.data?.attacksPerRound || 1,
+      ammo: attack.data?.ammo || 0,
+      currentAmmo: attack.data?.currentAmmo || 0,
+      malfunction: attack.data?.malfunction || 100,
+      isImpaling: attack.data?.isImpaling || false,
+      isMelee: isMelee,
+      itemId: attack.data?.fromId || attack._id,
+    };
+
+    // Collect damage modifiers from equipped items/effects
+    const attackField = isMelee ? "melee" : "ranged";
+    const damageMods = getEffectsAndModifiers(
+      ["damageBonus", "damagePenalty"], attackField, weaponData.itemId);
+    weaponData.damageModifiers = damageMods;
+
+    // Check ammo for firearms
+    if (isFirearm && weaponData.currentAmmo <= 0 && weaponData.ammo > 0) {
+      api.showNotification("Out of ammunition!", "red", weaponName);
+      return;
+    }
+
+    if (isMelee) {
+      performOpposedAttack(record, weaponName, skillValue, weaponData);
+    } else {
+      performFirearmAttack(record, weaponName, skillValue, weaponData);
+
+      // Deduct ammo
+      if (weaponData.ammo > 0) {
+        const newAmmo = Math.max(0, weaponData.currentAmmo - 1);
+        api.setValues({
+          [`${attackPath}.data.currentAmmo`]: newAmmo,
+        });
+      }
+    }
+  }
+
+  function onAmmoChange(value) {
+    // Sync current ammo when manually edited
+  }
+
+  function onSkillValueChange(value) {
+    // Manual skill value override for this weapon
+  }
+</script>
+
+<!-- Attack Row -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+  "
+>
+  <!-- Weapon Portrait -->
+  <portrait field="portrait" width="28px" height="28px"></portrait>
+
+  <!-- Weapon Name -->
+  <div style="min-width: 80px; width: 100%">
+    <namefield
+      placeholder="Weapon..."
+      size="xs"
+      width="100%"
+      field="name"
+      variant="unstyled"
+      bold="true"
+    ></namefield>
+  </div>
+
+  <!-- Skill % -->
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="42px"
+    field="skillValue"
+    label="Skill%"
+    hidecontrols="true"
+    textalign="center"
+    onchange="onSkillValueChange(value)"
+  ></numberfield>
+
+  <!-- Damage -->
+  <stringfield
+    field="damage"
+    placeholder="1D6"
+    size="xs"
+    width="65px"
+    label="Damage"
+  ></stringfield>
+
+  <!-- Range -->
+  <stringfield
+    field="range"
+    placeholder=""
+    size="xs"
+    width="55px"
+    label="Range"
+  ></stringfield>
+
+  <!-- Attacks/Round -->
+  <numberfield
+    placeholder="1"
+    size="xs"
+    width="36px"
+    field="attacksPerRound"
+    label="# Att"
+    hidecontrols="true"
+    textalign="center"
+  ></numberfield>
+
+  <!-- Current Ammo -->
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="42px"
+    field="currentAmmo"
+    label="Ammo"
+    hidecontrols="true"
+    textalign="center"
+    onchange="onAmmoChange(value)"
+  ></numberfield>
+
+  <!-- Malfunction -->
+  <numberfield
+    placeholder="100"
+    size="xs"
+    width="36px"
+    field="malfunction"
+    label="Malf"
+    hidecontrols="true"
+    textalign="center"
+  ></numberfield>
+
+  <!-- Melee toggle -->
+  <checkbox field="isMelee" label="Melee" size="xs"></checkbox>
+
+  <!-- Impaling toggle -->
+  <checkbox field="isImpaling" label="Impale" size="xs"></checkbox>
+
+  <!-- Roll Button -->
+  <iconbutton
+    field="rollAttack"
+    size="md"
+    variant="light"
+    options='[{"icon": "D100", "label": "Roll Attack", "value": "roll"}]'
+    onclick="onRollAttack()"
+  ></iconbutton>
+</div>

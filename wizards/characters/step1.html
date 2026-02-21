@@ -1,0 +1,69 @@
+<script>
+  // Step 1: Characteristic Generation Method
+  // Options: Roll (3D6/2D6+6), Point Buy, Manual Entry
+
+  function onStep1Load() {
+    // Initialize method if not set
+    const method = api.getValue("data.wizard.method");
+    if (!method) {
+      api.setValue("data.wizard.method", "roll");
+    }
+  }
+
+  function onMethodChange(value) {
+    api.setValue("data.wizard.method", value);
+    const isRoll = value === "roll";
+    const isPointBuy = value === "pointbuy";
+    const isManual = value === "manual";
+
+    api.setHidden(["rollInfo"], !isRoll);
+    api.setHidden(["pointBuyInfo"], !isPointBuy);
+    api.setHidden(["manualInfo"], !isManual);
+  }
+
+  function onStepEnd() {
+    // Nothing to commit yet — method choice stored in data.wizard.method
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 8px">
+  <label variant="bold" size="lg" label="Investigator Creation"></label>
+  <label size="sm" label="Choose how you want to generate your investigator's characteristics."></label>
+
+  <dropdown
+    field="method"
+    label="Generation Method"
+    size="sm"
+    width="250px"
+    defaultvalue="roll"
+    onchange="onMethodChange(value)"
+    onload="onStep1Load()"
+    options='[
+      {"label": "Roll Dice", "value": "roll"},
+      {"label": "Point Buy", "value": "pointbuy"},
+      {"label": "Manual Entry", "value": "manual"}
+    ]'
+  ></dropdown>
+
+  <box field="rollInfo">
+    <div style="padding: 4px; display: flex; flex-direction: column; gap: 4px">
+      <label size="sm" label="Roll 3D6 × 5 for STR, CON, DEX, APP, and POW."></label>
+      <label size="sm" label="Roll (2D6+6) × 5 for SIZ, INT, and EDU."></label>
+      <label size="sm" label="You'll roll each characteristic in the next step."></label>
+    </div>
+  </box>
+
+  <box field="pointBuyInfo" hidden="true">
+    <div style="padding: 4px; display: flex; flex-direction: column; gap: 4px">
+      <label size="sm" label="You receive 460 points to distribute among your 8 characteristics."></label>
+      <label size="sm" label="No characteristic can exceed 90 or be lower than 15."></label>
+    </div>
+  </box>
+
+  <box field="manualInfo" hidden="true">
+    <div style="padding: 4px; display: flex; flex-direction: column; gap: 4px">
+      <label size="sm" label="Enter your characteristic values directly in the next step."></label>
+      <label size="sm" label="Useful for transferring an existing investigator."></label>
+    </div>
+  </box>
+</div>

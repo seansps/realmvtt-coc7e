@@ -1,0 +1,86 @@
+<script>
+  function onModifierTypeChange(value) {
+    const noValueTypes = [
+      "bonusDie",
+      "penaltyDie",
+      "immuneToMajorWound",
+      "immuneToImpale",
+    ];
+    const noField = ["immuneToMajorWound", "immuneToImpale"];
+    const needsValue = !noValueTypes.includes(value);
+    const needsField = !noField.includes(value);
+
+    api.setValues({
+      "fields.value.hidden": !needsValue,
+      "fields.valueType.hidden": !needsValue,
+      "fields.field.hidden": !needsField,
+      "fields.active.hidden": false,
+      "fields.itemOnly.hidden": false,
+    });
+  }
+</script>
+
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    flex-wrap: wrap;
+  "
+>
+  <dropdown
+    field="type"
+    label="Type"
+    size="xs"
+    width="140px"
+    placeholder="Modifier type..."
+    onchange="onModifierTypeChange(value)"
+    options='[
+      {"label": "Skill Bonus", "value": "skillBonus"},
+      {"label": "Skill Penalty", "value": "skillPenalty"},
+      {"label": "Damage Bonus", "value": "damageBonus"},
+      {"label": "Damage Penalty", "value": "damagePenalty"},
+      {"label": "Armor Bonus", "value": "armorBonus"},
+      {"label": "SAN Bonus", "value": "sanBonus"},
+      {"label": "SAN Penalty", "value": "sanPenalty"},
+      {"label": "Stat Bonus", "value": "statBonus"},
+      {"label": "Stat Penalty", "value": "statPenalty"},
+      {"label": "Bonus Die", "value": "bonusDie"},
+      {"label": "Penalty Die", "value": "penaltyDie"},
+      {"label": "Immune: Major Wound", "value": "immuneToMajorWound"},
+      {"label": "Immune: Impale", "value": "immuneToImpale"}
+    ]'
+  ></dropdown>
+
+  <stringfield
+    field="field"
+    label="Field"
+    size="xs"
+    width="120px"
+    placeholder="skill/stat/all"
+  ></stringfield>
+
+  <dropdown
+    field="valueType"
+    label="Value Type"
+    size="xs"
+    width="90px"
+    options='[
+      {"label": "Number", "value": "number"},
+      {"label": "String", "value": "string"}
+    ]'
+  ></dropdown>
+
+  <stringfield
+    field="value"
+    label="Value"
+    size="xs"
+    width="60px"
+    placeholder="0"
+  ></stringfield>
+
+  <checkbox field="active" label="Active" size="xs"></checkbox>
+
+  <checkbox field="itemOnly" label="Item Only" size="xs"></checkbox>
+</div>

@@ -1,0 +1,92 @@
+<script>
+  function onHasSpecializationsChange(value) {
+    api.setValues({
+      "fields.specializations.hidden": !value,
+    });
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <div style="display: flex; gap: 8px">
+    <div
+      style="width: 100px; height: 100px; min-width: 100px; min-height: 100px"
+    >
+      <portrait width="100px" height="100px" field="portrait"></portrait>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; width: 100%">
+      <div
+        style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap"
+      >
+        <numberfield
+          field="baseValue"
+          label="Base Value %"
+          size="sm"
+          width="100px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="0"
+        ></numberfield>
+
+        <dropdown
+          field="category"
+          label="Category"
+          size="sm"
+          width="160px"
+          placeholder="Select..."
+          options='[
+            {"label": "Combat", "value": "combat"},
+            {"label": "Communication", "value": "communication"},
+            {"label": "Mental", "value": "mental"},
+            {"label": "Perception", "value": "perception"},
+            {"label": "Physical", "value": "physical"},
+            {"label": "Craft/Knowledge", "value": "craft"},
+            {"label": "Mythos", "value": "mythos"}
+          ]'
+        ></dropdown>
+      </div>
+
+      <div
+        style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap"
+      >
+        <checkbox
+          field="hasSpecializations"
+          label="Has Specializations"
+          size="sm"
+          onchange="onHasSpecializationsChange(value)"
+        ></checkbox>
+        <checkbox
+          field="cannotPush"
+          label="Cannot Be Pushed"
+          size="sm"
+        ></checkbox>
+        <checkbox field="isUncommon" label="Uncommon" size="sm"></checkbox>
+      </div>
+    </div>
+  </div>
+
+  <!-- Specializations -->
+  <stringfield
+    field="specializations"
+    label="Default Specializations"
+    size="sm"
+    width="100%"
+    placeholder="Comma-separated: Brawl, Sword, Axe..."
+    hidden="true"
+  ></stringfield>
+
+  <divider label="Description"></divider>
+
+  <richtextfield
+    field="description"
+    placeholder="Describe the skill, what it covers, and when to use it..."
+    height="200px"
+  ></richtextfield>
+
+  <divider label="Pushing Examples"></divider>
+
+  <richtextfield
+    field="pushExamples"
+    placeholder="Examples of what pushing this skill might look like..."
+    height="120px"
+  ></richtextfield>
+</div>

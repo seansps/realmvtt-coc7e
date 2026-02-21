@@ -1,0 +1,81 @@
+<script>
+  // Step 7: Backstory
+  // Fill in the key backstory elements for the investigator
+
+  function onStep7Load() {
+    // Nothing special needed
+  }
+
+  function onStepEnd() {
+    const valuesToSet = {};
+
+    const fields = [
+      "personalDescription",
+      "ideologyBeliefs",
+      "significantPeople",
+      "meaningfulLocations",
+      "treasuredPossessions",
+      "traits",
+    ];
+
+    fields.forEach((field) => {
+      const value = api.getValue(`data.wizard.${field}`) || "";
+      if (value) {
+        valuesToSet[`data.${field}`] = value;
+      }
+    });
+
+    if (Object.keys(valuesToSet).length > 0) {
+      api.setValues(valuesToSet);
+    }
+  }
+</script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 8px">
+  <label variant="bold" size="lg" label="Backstory"></label>
+  <label size="xs" label="Define your investigator's personality, beliefs, and connections. These create roleplaying hooks and potential sources of Sanity."></label>
+
+  <stringfield
+    field="personalDescription"
+    label="Personal Description"
+    size="sm"
+    width="100%"
+    placeholder="Physical appearance, mannerisms, style of dress..."
+    onload="onStep7Load()"
+  ></stringfield>
+
+  <richtextfield
+    field="ideologyBeliefs"
+    placeholder="What does the investigator believe in? Political stance, religious views, moral philosophy..."
+    height="80px"
+  ></richtextfield>
+  <label size="xs" label="Ideology / Beliefs"></label>
+
+  <richtextfield
+    field="significantPeople"
+    placeholder="Who matters most to the investigator? A loved one, a mentor, an enemy..."
+    height="80px"
+  ></richtextfield>
+  <label size="xs" label="Significant People"></label>
+
+  <richtextfield
+    field="meaningfulLocations"
+    placeholder="A childhood home, a favorite bar, a place of first love..."
+    height="60px"
+  ></richtextfield>
+  <label size="xs" label="Meaningful Locations"></label>
+
+  <richtextfield
+    field="treasuredPossessions"
+    placeholder="A family heirloom, a lucky charm, a journal..."
+    height="60px"
+  ></richtextfield>
+  <label size="xs" label="Treasured Possessions"></label>
+
+  <richtextfield
+    field="traits"
+    placeholder="Key personality traits, habits, quirks..."
+    height="60px"
+  ></richtextfield>
+  <label size="xs" label="Traits"></label>
+</div>

@@ -1,0 +1,55 @@
+<script></script>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <div style="display: flex; gap: 8px">
+    <div
+      style="width: 100px; height: 100px; min-width: 100px; min-height: 100px"
+    >
+      <portrait width="100px" height="100px" field="portrait"></portrait>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 4px; width: 100%">
+      <div
+        style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap"
+      >
+        <stringfield
+          field="skillPointFormula"
+          label="Occupation Skill Points"
+          size="sm"
+          width="200px"
+          placeholder="EDU × 4"
+        ></stringfield>
+        <stringfield
+          field="creditRatingRange"
+          label="Credit Rating"
+          size="sm"
+          width="120px"
+          placeholder="9-70"
+        ></stringfield>
+      </div>
+    </div>
+  </div>
+
+  <divider label="Occupation Skills"></divider>
+
+  <richtextfield
+    field="occupationSkills"
+    placeholder="List the occupation skills..."
+    height="120px"
+  ></richtextfield>
+
+  <divider label="Suggested Contacts"></divider>
+
+  <richtextfield
+    field="suggestedContacts"
+    placeholder="Business people, local government, clients..."
+    height="80px"
+  ></richtextfield>
+
+  <divider label="Description"></divider>
+
+  <richtextfield
+    field="description"
+    placeholder="Occupation description..."
+    height="150px"
+  ></richtextfield>
+</div>

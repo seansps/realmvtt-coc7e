@@ -1,0 +1,124 @@
+<script>
+  function onSkillValueChange(value) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) return;
+
+    const pathToSkill = dataPath.replace(".data.value", "");
+    const skill = api.getValue(pathToSkill);
+    const fieldsToSet = {
+      [`${pathToSkill}.data.value`]: val,
+      [`${pathToSkill}.data.halfValue`]: getHalf(val),
+      [`${pathToSkill}.data.fifthValue`]: getFifth(val),
+    };
+
+    // Cthulhu Mythos caps max sanity at 99 - value
+    if (skill?.name === "Cthulhu Mythos") {
+      fieldsToSet["data.cthulhuMythos"] = val;
+      fieldsToSet["data.maxSan"] = 99 - val;
+    }
+
+    api.setValues(fieldsToSet);
+  }
+
+  function onRollSkill() {
+    const skillDataPath = dataPath.replace(".data.rollSkill", "");
+    const skill = api.getValue(skillDataPath);
+    const skillName = skill.name || "Skill";
+    const skillValue = skill.data?.value || 0;
+    const cannotPush = skill.data?.cannotPush || false;
+
+    performSkillCheck(record, skillName, skillValue, {
+      cannotPush: cannotPush,
+    });
+  }
+
+  function onCheckChange(value) {
+    // Improvement check mark toggled — no additional logic needed
+  }
+
+  function onClickSkill(value) {
+    const skillName = value;
+    api.getRecordByTypeAndName("skills", skillName, (skillRecord) => {
+      if (skillRecord) {
+        api.openRecord(skillRecord);
+      }
+    });
+  }
+</script>
+
+<!-- Skill Row: checkbox | name | value | half | fifth | roll -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+  "
+>
+  <!-- Improvement Check (hidden via fields object for specialization parents) -->
+  <checkbox
+    field="checked"
+    size="xs"
+    onchange="onCheckChange(value)"
+  ></checkbox>
+
+  <!-- Skill Name -->
+  <div style="min-width: 140px; width: 100%">
+    <namefield
+      placeholder="Skill name..."
+      size="xs"
+      width="100%"
+      field="namefield"
+      variant="unstyled"
+      bold="true"
+      onclick="onClickSkill(value)"
+    ></namefield>
+  </div>
+
+  <!-- Values (hidden via fields object for specialization parents) -->
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="42px"
+    field="value"
+    hidecontrols="true"
+    textalign="center"
+    onchange="onSkillValueChange(value)"
+  ></numberfield>
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="36px"
+    field="halfValue"
+    hidecontrols="true"
+    textalign="center"
+    editable="false"
+  ></numberfield>
+  <numberfield
+    placeholder="0"
+    size="xs"
+    width="36px"
+    field="fifthValue"
+    hidecontrols="true"
+    textalign="center"
+    editable="false"
+  ></numberfield>
+  <iconbutton
+    field="rollSkill"
+    size="md"
+    variant="light"
+    options='[{"icon": "D100", "label": "Roll Skill", "value": "roll"}]'
+    onclick="onRollSkill()"
+  ></iconbutton>
+</div>
+
+<!-- Nested Specializations (hidden via fields object, shown for specialization parents) -->
+<div style="width: calc(100% - 16px); margin-left: 16px">
+  <list
+    listtype="specialization_list"
+    field="specializations"
+    variant="striped"
+    height="100%"
+  ></list>
+</div>
