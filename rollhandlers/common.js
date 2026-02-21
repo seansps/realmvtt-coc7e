@@ -47,6 +47,14 @@ const SUCCESS_LEVEL_COLORS = {
   [SUCCESS_LEVELS.CRITICAL]: "#FFD700",
 };
 
+// Bonus/penalty dice colors (green = good, red = bad)
+const BONUS_DICE_COLORS = {
+  bonus: { diceColor: "#0a6b2e", textColor: "#ffffff" },
+};
+const PENALTY_DICE_COLORS = {
+  penalty: { diceColor: "#8B0000", textColor: "#ffffff" },
+};
+
 function getSuccessLevel(roll, skillValue) {
   const half = Math.floor(skillValue / 2);
   const fifth = Math.floor(skillValue / 5);
@@ -338,6 +346,7 @@ function performSkillCheck(
   modifiers.push(...skillMods);
 
   // Bonus/penalty dice — collected and passed as metadata counts
+  // Search by skill name, and also by characteristic abbreviation for stat rolls
   const bonusDice = getEffectsAndModifiersForToken(
     rec,
     ["bonusDie"],
@@ -348,6 +357,30 @@ function performSkillCheck(
     ["penaltyDie"],
     skillName,
   );
+
+  // For characteristic rolls, also check modifiers targeting the stat abbreviation
+  if (additionalMetadata.characteristic) {
+    const charBonusDice = getEffectsAndModifiersForToken(
+      rec,
+      ["bonusDie"],
+      additionalMetadata.characteristic,
+    );
+    const charPenaltyDice = getEffectsAndModifiersForToken(
+      rec,
+      ["penaltyDie"],
+      additionalMetadata.characteristic,
+    );
+    // Add only unique modifiers (avoid duplicates from "all" matching both)
+    const existingIds = new Set(bonusDice.map((m) => m._id));
+    for (const m of charBonusDice) {
+      if (!existingIds.has(m._id)) bonusDice.push(m);
+    }
+    const existingPenIds = new Set(penaltyDice.map((m) => m._id));
+    for (const m of charPenaltyDice) {
+      if (!existingPenIds.has(m._id)) penaltyDice.push(m);
+    }
+  }
+
   let bonusDieCount =
     (additionalMetadata.bonusDice || 0) +
     bonusDice.filter((m) => m.active).length;
@@ -402,13 +435,24 @@ function performSkillCheck(
     }
   }
 
+  // Build formula: 1d100 default + typed d% for bonus/penalty dice
+  let formula = "1d100 default";
+  if (metadata.bonusDice > 0) {
+    formula += ` + ${metadata.bonusDice}d% bonus`;
+    metadata.diceColors = BONUS_DICE_COLORS;
+  }
+  if (metadata.penaltyDice > 0) {
+    formula += ` + ${metadata.penaltyDice}d% penalty`;
+    metadata.diceColors = PENALTY_DICE_COLORS;
+  }
+
   if (rec.linked === undefined) {
-    api.promptRoll(`${skillName}`, "1d100", modifiers, metadata, "skill");
+    api.promptRoll(`${skillName}`, formula, modifiers, metadata, "skill");
   } else {
     api.promptRollForToken(
       rec,
       `${skillName}`,
-      "1d100",
+      formula,
       modifiers,
       metadata,
       "skill",
@@ -499,12 +543,12 @@ function performSanityCheck(rec, sanLossSuccess, sanLossFailure) {
   };
 
   if (rec.linked === undefined) {
-    api.promptRoll("Sanity Check", "1d100", [], metadata, "sanity");
+    api.promptRoll("Sanity Check", "1d100 default", [], metadata, "sanity");
   } else {
     api.promptRollForToken(
       rec,
       "Sanity Check",
-      "1d100",
+      "1d100 default",
       [],
       metadata,
       "sanity",

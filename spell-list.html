@@ -71,9 +71,9 @@
       }
 
       if (record.linked === undefined) {
-        api.promptRoll(`Cast: ${spellName}`, "1d100", [], castMetadata, "magic");
+        api.promptRoll(`Cast: ${spellName}`, "1d100 default", [], castMetadata, "magic");
       } else {
-        api.promptRollForToken(record, `Cast: ${spellName}`, "1d100", [], castMetadata, "magic");
+        api.promptRollForToken(record, `Cast: ${spellName}`, "1d100 default", [], castMetadata, "magic");
       }
     });
   }

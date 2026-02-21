@@ -27,8 +27,86 @@ const weapon = metadata.weapon || null;
 const tokenId = metadata.tokenId;
 const targetId = metadata.targetId;
 
-// Determine the actual d100 result
-const rollTotal = roll.total;
+// ============================================================
+// Resolve Bonus/Penalty Dice
+// ============================================================
+// d100 in roll.dice splits into two d10s:
+//   { type: 10, isD100Tens: true, value: N }  — tens digit (0-9)
+//   { type: 10, isD100Ones: true, value: N }  — ones digit
+// Extra d0s (typed "bonus" or "penalty") are alternative tens digits (0-9).
+// Bonus: take lowest result. Penalty: take highest result.
+
+const bonusDiceCount = metadata.bonusDice || 0;
+const penaltyDiceCount = metadata.penaltyDice || 0;
+const hasExtraDice = bonusDiceCount > 0 || penaltyDiceCount > 0;
+
+let rollTotal;
+let rollExplanation = "";
+
+if (hasExtraDice) {
+  // Use the types array for raw values — roll.dice is pre-munged by the system
+  const types = roll.types || [];
+
+  // types structure for "1d100 default + 1d% bonus":
+  //   die:100 (not percentile) → value is the tens portion (already ×10, e.g., 60)
+  //   die:10, isSpecialD10:true → value is the ones digit (e.g., 9)
+  //   die:100, isPercentileDie:true → value is the d% tens (already ×10, e.g., 40)
+  const d100Type = types.find((t) => t.die === 100 && !t.isPercentileDie);
+  const onesType = types.find((t) => t.isSpecialD10);
+  const percentileTypes = types.filter((t) => t.isPercentileDie);
+
+  const ones = onesType ? onesType.value : 0;
+  const baseTens = d100Type ? d100Type.value : 0; // already ×10
+
+  // All tens candidates
+  const candidates = [{ tens: baseTens }];
+  for (const t of percentileTypes) {
+    candidates.push({ tens: t.value }); // already ×10
+  }
+
+  // Calculate full result for each (00 + 0 = 100)
+  for (const c of candidates) {
+    c.result = c.tens + ones;
+    if (c.result === 0) c.result = 100;
+  }
+
+  // Pick best (bonus) or worst (penalty)
+  let chosen;
+  if (bonusDiceCount > 0) {
+    chosen = candidates.reduce((best, c) =>
+      c.result < best.result ? c : best,
+    );
+    rollExplanation = `Bonus die: ${candidates.map((c) => c.result).join(", ")} → took ${chosen.result}`;
+  } else {
+    chosen = candidates.reduce((worst, c) =>
+      c.result > worst.result ? c : worst,
+    );
+    rollExplanation = `Penalty die: ${candidates.map((c) => c.result).join(", ")} → took ${chosen.result}`;
+  }
+
+  rollTotal = chosen.result;
+  roll.total = rollTotal;
+
+  // Rebuild roll.dice with only the winning d100 pair — omit d% dice entirely
+  roll.dice = [
+    {
+      type: 10,
+      value: Math.floor(chosen.tens / 10),
+      reason: "natural",
+      isD100Tens: true,
+      d100PairId: 0,
+    },
+    {
+      type: 10,
+      value: ones,
+      reason: "natural",
+      isD100Ones: true,
+      d100PairId: 0,
+    },
+  ];
+} else {
+  rollTotal = roll.total;
+}
 
 // Evaluate success level
 const successLevel = getSuccessLevel(rollTotal, skillValue);
@@ -41,6 +119,15 @@ tags.push({
   name: skillName,
   tooltip: `${skillName}: ${skillValue}% (Hard: ${halfValue}%, Extreme: ${fifthValue}%)`,
 });
+
+if (hasExtraDice) {
+  const diceType = bonusDiceCount > 0 ? "Bonus" : "Penalty";
+  const diceCount = bonusDiceCount > 0 ? bonusDiceCount : penaltyDiceCount;
+  tags.push({
+    name: `${diceType} ×${diceCount}`,
+    tooltip: rollExplanation,
+  });
+}
 
 if (isPushed) {
   tags.push({
@@ -114,11 +201,7 @@ if (
 }
 
 // Luck spending — offer on failure (not fumble, not Luck rolls, not SAN checks)
-if (
-  successLevel === SUCCESS_LEVELS.FAILURE &&
-  !isLuck &&
-  !metadata.isSanity
-) {
+if (successLevel === SUCCESS_LEVELS.FAILURE && !isLuck && !metadata.isSanity) {
   const recType = metadata.recordType || "characters";
   const recId = metadata.recordId || "";
   const luckNeeded = rollTotal - skillValue;

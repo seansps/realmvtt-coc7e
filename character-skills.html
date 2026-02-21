@@ -20,7 +20,7 @@
           const specValue = parseInt(specs[j].data?.value, 10) || 0;
           api.promptRoll(
             `Improve: ${specs[j].name}`,
-            "1d100",
+            "1d100 default",
             [],
             {
               skillName: specs[j].name,
@@ -40,7 +40,7 @@
         const skillValue = parseInt(skill.data?.value, 10) || 0;
         api.promptRoll(
           `Improve: ${skill.name}`,
-          "1d100",
+          "1d100 default",
           [],
           {
             skillName: skill.name,
