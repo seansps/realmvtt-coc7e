@@ -158,6 +158,32 @@
     <numberfield field="armor" label="Armor" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
   </div>
 
+  <!-- Token Settings -->
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <dropdown
+      field="size"
+      label="Token Size"
+      size="sm"
+      width="120px"
+      placeholder="1 (Normal)"
+      options='[
+        {"label": "0.5 (Tiny)", "value": "0.5"},
+        {"label": "0.75 (Small)", "value": "0.75"},
+        {"label": "1 (Normal)", "value": "1"},
+        {"label": "2 (Large)", "value": "2"},
+        {"label": "3 (Huge)", "value": "3"},
+        {"label": "4 (Enormous)", "value": "4"}
+      ]'
+    ></dropdown>
+    <stringfield
+      field="senses"
+      label="Senses"
+      size="sm"
+      width="200px"
+      placeholder="Darkvision 60ft..."
+    ></stringfield>
+  </div>
+
   <!-- SAN Loss (creatures/deities) -->
   <stringfield field="sanLoss" label="SAN Loss" size="sm" width="120px" placeholder="1/1D10" hidden="true"></stringfield>
 

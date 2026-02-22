@@ -77,33 +77,39 @@
   </div>
 
   <!-- Values (hidden via fields object for specialization parents) -->
-  <numberfield
-    placeholder="0"
-    size="xs"
-    width="42px"
-    field="value"
-    hidecontrols="true"
-    textalign="center"
-    onchange="onSkillValueChange(value)"
-  ></numberfield>
-  <numberfield
-    placeholder="0"
-    size="xs"
-    width="36px"
-    field="halfValue"
-    hidecontrols="true"
-    textalign="center"
-    editable="false"
-  ></numberfield>
-  <numberfield
-    placeholder="0"
-    size="xs"
-    width="36px"
-    field="fifthValue"
-    hidecontrols="true"
-    textalign="center"
-    editable="false"
-  ></numberfield>
+  <div style="min-width: 42px; width: 42px">
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="100%"
+      field="value"
+      hidecontrols="true"
+      textalign="center"
+      onchange="onSkillValueChange(value)"
+    ></numberfield>
+  </div>
+  <div style="min-width: 36px; width: 36px">
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="100%"
+      field="halfValue"
+      hidecontrols="true"
+      textalign="center"
+      editable="false"
+    ></numberfield>
+  </div>
+  <div style="min-width: 36px; width: 36px">
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="100%"
+      field="fifthValue"
+      hidecontrols="true"
+      textalign="center"
+      editable="false"
+    ></numberfield>
+  </div>
   <iconbutton
     field="rollSkill"
     size="md"

@@ -109,6 +109,35 @@
 
   <divider size="xs"></divider>
 
+  <!-- Token Settings -->
+  <label variant="bold" size="md" label="Token Settings"></label>
+  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
+    <dropdown
+      field="size"
+      label="Token Size"
+      size="sm"
+      width="120px"
+      placeholder="1 (Normal)"
+      options='[
+        {"label": "0.5 (Tiny)", "value": "0.5"},
+        {"label": "0.75 (Small)", "value": "0.75"},
+        {"label": "1 (Normal)", "value": "1"},
+        {"label": "2 (Large)", "value": "2"},
+        {"label": "3 (Huge)", "value": "3"},
+        {"label": "4 (Enormous)", "value": "4"}
+      ]'
+    ></dropdown>
+    <stringfield
+      field="senses"
+      label="Senses"
+      size="sm"
+      width="200px"
+      placeholder="Darkvision 60ft..."
+    ></stringfield>
+  </div>
+
+  <divider size="xs"></divider>
+
   <!-- Spells Known -->
   <label variant="bold" size="md" label="Spells Known"></label>
   <list

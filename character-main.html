@@ -234,51 +234,70 @@
           width="fit-content"
           height="36px"
         ></list>
-        <stringfield
-          field="occupation"
-          label="Occupation"
-          size="sm"
-          width="140px"
-          placeholder="Drop occupation..."
-          editable="false"
-          onload="onLoad()"
-        ></stringfield>
-        <numberfield
-          field="age"
-          label="Age"
-          size="sm"
-          width="80px"
-          placeholder="Age..."
-          hidecontrols="true"
-          textalign="center"
-          onchange="onAgeChange(value)"
-        ></numberfield>
-        <dropdown
-          field="sex"
-          label="Sex"
-          size="sm"
-          width="80px"
-          combo="true"
-          options='[{"label": "Male", "value": "Male"}, {"label": "Female", "value": "Female"}, {"label": "Other", "value": "Other"}]'
-        ></dropdown>
+        <div style="flex: 1">
+          <stringfield
+            field="occupation"
+            label="Occupation"
+            size="sm"
+            width="100%"
+            placeholder="Drop occupation..."
+            editable="false"
+            onload="onLoad()"
+          ></stringfield>
+        </div>
+        <div style="min-width: 60px; width: 60px">
+          <numberfield
+            field="age"
+            label="Age"
+            size="sm"
+            width="100%"
+            placeholder="Age..."
+            hidecontrols="true"
+            textalign="center"
+            onchange="onAgeChange(value)"
+          ></numberfield>
+        </div>
+        <div style="min-width: 100px; width: 100px">
+          <dropdown
+            field="sex"
+            label="Sex"
+            placeholder="Select..."
+            size="sm"
+            width="100%"
+            combo="true"
+            options='[{"label": "Male", "value": "Male"}, {"label": "Female", "value": "Female"}, {"label": "Other", "value": "Other"}]'
+          ></dropdown>
+        </div>
       </div>
       <div
-        style="display: flex; flex-direction: row; gap: 4px; flex-wrap: wrap"
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          flex-wrap: wrap;
+          width: 100%;
+        "
       >
-        <stringfield
-          field="residence"
-          label="Residence"
-          size="xs"
-          width="49%"
-          placeholder=""
-        ></stringfield>
-        <stringfield
-          field="birthplace"
-          label="Birthplace"
-          size="xs"
-          width="49%"
-          placeholder=""
-        ></stringfield>
+        <div style="flex: 1">
+          <stringfield
+            field="residence"
+            label="Residence"
+            placeholder="Enter residence..."
+            size="xs"
+            width="100%"
+            placeholder=""
+          ></stringfield>
+        </div>
+        <div style="flex: 1">
+          <stringfield
+            field="birthplace"
+            placeholder="Enter birthplace..."
+            label="Birthplace"
+            size="xs"
+            width="100%"
+            placeholder=""
+          ></stringfield>
+        </div>
       </div>
     </div>
   </div>

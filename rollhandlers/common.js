@@ -122,15 +122,30 @@ function recalcDerivedStats(fieldsToSet, rec) {
 
   // HP = (CON + SIZ) / 10, rounded down
   const maxHp = Math.floor((con + siz) / 10);
+  const oldMaxHp = parseInt(rec?.data?.maxHp, 10) || 0;
   fieldsToSet["data.maxHp"] = maxHp;
+  // Initialize curHp to maxHp only when maxHp is first computed (was 0 or unset)
+  if (!oldMaxHp && maxHp > 0) {
+    fieldsToSet["data.curHp"] = maxHp;
+  }
 
   // MP = POW / 5, rounded down
   const maxMp = Math.floor(pow / 5);
+  const oldMaxMp = parseInt(rec?.data?.maxMp, 10) || 0;
   fieldsToSet["data.maxMp"] = maxMp;
+  // Initialize curMp to maxMp only when maxMp is first computed (was 0 or unset)
+  if (!oldMaxMp && maxMp > 0) {
+    fieldsToSet["data.curMp"] = maxMp;
+  }
 
-  // Max SAN = 99 - Cthulhu Mythos
+  // SAN starts equal to POW, max SAN = 99 - Cthulhu Mythos
   const cthulhuMythos = parseInt(rec?.data?.cthulhuMythos, 10) || 0;
   fieldsToSet["data.maxSan"] = 99 - cthulhuMythos;
+  // Initialize san to POW only when san hasn't been set yet (no existing san and POW > 0)
+  const oldSan = parseInt(rec?.data?.san, 10) || 0;
+  if (!oldSan && pow > 0) {
+    fieldsToSet["data.san"] = pow;
+  }
 
   // Damage Bonus & Build from STR+SIZ table
   const { db, build } = getDamageBonusAndBuild(str + siz);
@@ -692,7 +707,6 @@ function getDefaultSkills(rec) {
         { name: "Arctic", baseValue: 10 },
         { name: "Desert", baseValue: 10 },
         { name: "Sea", baseValue: 10 },
-        { name: "Wilderness", baseValue: 10 },
       ],
     },
     { name: "Swim", baseValue: 20 },
@@ -742,8 +756,8 @@ function populateDefaultSkills(rec) {
     if (hasSpecs && skill.specializations) {
       skillEntry.data.specializations = skill.specializations.map((spec) => ({
         _id: generateUuid(),
-        name: `${skill.name}: ${spec.name}`,
-        unidentifiedName: `${skill.name}: ${spec.name}`,
+        name: `${spec.name}`,
+        unidentifiedName: `${spec.name}`,
         recordType: "specialization",
         identified: true,
         icon: "IconDice",
@@ -809,8 +823,8 @@ function restoreMissingSkills(rec, callback) {
       if (hasSpecs && skill.specializations) {
         skillEntry.data.specializations = skill.specializations.map((spec) => ({
           _id: generateUuid(),
-          name: `${skill.name}: ${spec.name}`,
-          unidentifiedName: `${skill.name}: ${spec.name}`,
+          name: `${spec.name}`,
+          unidentifiedName: `${spec.name}`,
           recordType: "specialization",
           identified: true,
           icon: "IconDice",

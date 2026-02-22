@@ -29,14 +29,18 @@
               specIndex: j,
               isSpecialization: true,
             },
-            "improvement"
+            "improvement",
           );
           rollCount++;
         }
       }
 
       // Check the main skill (only if it doesn't have specializations)
-      if (skill.data?.checked && !skill.data?.noImprovement && !skill.data?.hasSpecializations) {
+      if (
+        skill.data?.checked &&
+        !skill.data?.noImprovement &&
+        !skill.data?.hasSpecializations
+      ) {
         const skillValue = parseInt(skill.data?.value, 10) || 0;
         api.promptRoll(
           `Improve: ${skill.name}`,
@@ -48,14 +52,18 @@
             skillIndex: i,
             isSpecialization: false,
           },
-          "improvement"
+          "improvement",
         );
         rollCount++;
       }
     }
 
     if (rollCount === 0) {
-      api.showNotification("No skills are marked for improvement.", "yellow", "Improvement");
+      api.showNotification(
+        "No skills are marked for improvement.",
+        "yellow",
+        "Improvement",
+      );
     }
   }
 </script>
@@ -71,17 +79,18 @@
       padding: 0 4px;
     "
   >
-    <div style="width: 24px"></div>
+    <iconbutton
+      field="improveSkillsBtn"
+      size="xs"
+      variant="default"
+      options='[{"icon": "IconArrowUp", "label": "Improve Checked Skills", "value": "improve"}]'
+      onclick="onImproveSkills()"
+    ></iconbutton>
     <div style="min-width: 140px; flex: 1">
       <label variant="bold" size="sm" label="Skill"></label>
     </div>
     <div
-      style="
-        display: flex;
-        flex-direction: row;
-        gap: 2px;
-        margin-left: auto;
-      "
+      style="display: flex; flex-direction: row; gap: 2px; margin-left: auto"
     >
       <div style="width: 42px; text-align: center">
         <label variant="bold" size="xs" label="Value"></label>
@@ -93,6 +102,13 @@
         <label variant="bold" size="xs" label="Fifth"></label>
       </div>
       <div style="width: 36px"></div>
+      <iconbutton
+        field="restoreSkillsBtn"
+        size="xs"
+        variant="default"
+        options='[{"icon": "IconRefresh", "label": "Restore Missing Skills", "value": "restore"}]'
+        onclick="onRestoreMissingSkills()"
+      ></iconbutton>
     </div>
   </div>
 
@@ -105,23 +121,4 @@
     variant="striped"
     height="100%"
   ></list>
-
-  <divider size="xs"></divider>
-
-  <div style="display: flex; flex-direction: row; gap: 8px">
-    <iconbutton
-      field="improveSkillsBtn"
-      size="md"
-      variant="default"
-      options='[{"icon": "IconArrowUp", "label": "Improve Checked Skills", "value": "improve"}]'
-      onclick="onImproveSkills()"
-    ></iconbutton>
-    <iconbutton
-      field="restoreSkillsBtn"
-      size="md"
-      variant="default"
-      options='[{"icon": "IconRefresh", "label": "Restore Missing Skills", "value": "restore"}]'
-      onclick="onRestoreMissingSkills()"
-    ></iconbutton>
-  </div>
 </div>
