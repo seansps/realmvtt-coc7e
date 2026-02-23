@@ -38,40 +38,53 @@ tags.push({
 let message = "";
 
 if (rollTotal > skillValue) {
-  // Improvement! Roll 1D10 for the increase
-  const improveRoll = api.rollInstant("1d10");
-  const increase = improveRoll?.total || 1;
-  const newValue = skillValue + increase;
-
+  // Improvement! Embed a macro to roll 1D10 for the increase
   message += `\n**[center][color=green]${skillName} Improves![/color][/center]**`;
   message += `\n[center]Rolled ${rollTotal} vs ${skillValue}% — exceeds current value![/center]`;
-  message += `\n[center]Improvement: +${increase} (1D10) → **${newValue}%**[/center]`;
 
   tags.push({
-    name: `+${increase}`,
-    tooltip: `Improved by ${increase} to ${newValue}%`,
+    name: "Improves!",
+    tooltip: `Rolled ${rollTotal}, exceeded ${skillValue}% — roll 1D10 for improvement`,
   });
 
-  // Apply the improvement to the character
-  if (record) {
-    const valuesToSet = {};
-    if (isSpecialization && specIndex !== undefined && skillIndex !== undefined) {
-      const basePath = `data.skills[${skillIndex}].data.specializations[${specIndex}]`;
-      valuesToSet[`${basePath}.data.value`] = newValue;
-      valuesToSet[`${basePath}.data.halfValue`] = getHalf(newValue);
-      valuesToSet[`${basePath}.data.fifthValue`] = getFifth(newValue);
-      valuesToSet[`${basePath}.data.checked`] = false;
-    } else if (skillIndex !== undefined) {
-      valuesToSet[`data.skills[${skillIndex}].data.value`] = newValue;
-      valuesToSet[`data.skills[${skillIndex}].data.halfValue`] = getHalf(newValue);
-      valuesToSet[`data.skills[${skillIndex}].data.fifthValue`] = getFifth(newValue);
-      valuesToSet[`data.skills[${skillIndex}].data.checked`] = false;
-    }
+  const recType = metadata.recordType || "characters";
+  const recId = metadata.recordId || "";
 
-    if (Object.keys(valuesToSet).length > 0) {
-      api.setValues(valuesToSet);
+  const improveMacro = `\`\`\`Roll_Improvement
+  api.getRecord("${recType}", "${recId}", (rec) => {
+    if (!rec) return;
+    api.promptRollForToken(rec, "${skillName} +1D10", "1d10", [], {
+      skillName: "${skillName}",
+      skillValue: ${skillValue},
+      skillIndex: ${skillIndex},
+      specIndex: ${specIndex !== undefined ? specIndex : "undefined"},
+      isSpecialization: ${isSpecialization},
+      recordType: "${recType}",
+      recordId: "${recId}",
+    }, "improvementApply");
+  });
+\`\`\``;
+  message += `\n${improveMacro}`;
+
+  // Clear the check mark now (the d10 handler will update the value)
+  api.getRecord(recType, recId, (rec) => {
+    if (!rec) return;
+    const valuesToSet = {};
+    if (
+      isSpecialization &&
+      specIndex !== undefined &&
+      skillIndex !== undefined
+    ) {
+      valuesToSet[
+        `data.skills.${skillIndex}.data.specializations.${specIndex}.data.checked`
+      ] = false;
+    } else if (skillIndex !== undefined) {
+      valuesToSet[`data.skills.${skillIndex}.data.checked`] = false;
     }
-  }
+    if (Object.keys(valuesToSet).length > 0) {
+      api.setValuesOnRecord(rec, valuesToSet);
+    }
+  });
 } else {
   // No improvement
   message += `\n**[center][color=gray]${skillName} — No Improvement[/color][/center]**`;
@@ -83,18 +96,26 @@ if (rollTotal > skillValue) {
   });
 
   // Clear the check mark
-  if (record) {
+  const recType = metadata.recordType || "characters";
+  const recId = metadata.recordId || "";
+  api.getRecord(recType, recId, (rec) => {
+    if (!rec) return;
     const valuesToSet = {};
-    if (isSpecialization && specIndex !== undefined && skillIndex !== undefined) {
-      valuesToSet[`data.skills[${skillIndex}].data.specializations[${specIndex}].data.checked`] = false;
+    if (
+      isSpecialization &&
+      specIndex !== undefined &&
+      skillIndex !== undefined
+    ) {
+      valuesToSet[
+        `data.skills.${skillIndex}.data.specializations.${specIndex}.data.checked`
+      ] = false;
     } else if (skillIndex !== undefined) {
-      valuesToSet[`data.skills[${skillIndex}].data.checked`] = false;
+      valuesToSet[`data.skills.${skillIndex}.data.checked`] = false;
     }
-
     if (Object.keys(valuesToSet).length > 0) {
-      api.setValues(valuesToSet);
+      api.setValuesOnRecord(rec, valuesToSet);
     }
-  }
+  });
 }
 
 // Send the message
