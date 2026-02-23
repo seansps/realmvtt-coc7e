@@ -949,7 +949,7 @@ function spendLuck(rec, amount) {
     return false;
   }
   const newLuck = currentLuck - amount;
-  api.setValues({
+  api.setValuesOnRecord(rec, {
     "data.luck": newLuck,
     "data.luckHalf": getHalf(newLuck),
     "data.luckFifth": getFifth(newLuck),

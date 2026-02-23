@@ -205,8 +205,7 @@ if (successLevel === SUCCESS_LEVELS.FAILURE && !isLuck && !metadata.isSanity) {
   const recType = metadata.recordType || "characters";
   const recId = metadata.recordId || "";
   const luckNeeded = rollTotal - skillValue;
-  const currentLuck = parseInt(record?.data?.luck, 10) || 0;
-  if (luckNeeded > 0 && currentLuck >= luckNeeded) {
+  if (luckNeeded > 0) {
     const luckMacro = `\`\`\`Spend_${luckNeeded}_Luck
   api.getRecord("${recType}", "${recId}", (rec) => {
     if (!rec) return;
