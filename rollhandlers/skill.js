@@ -246,6 +246,11 @@ if (
   const attackerSuccessLevel = successLevel;
   const attackerRoll = rollTotal;
 
+  // Enrich weapon with attacker's damage bonus so defense resolution can build impale formula
+  const weaponWithDb = weapon
+    ? { ...weapon, damageBonus: record?.data?.damageBonus || "0" }
+    : weapon;
+
   const fightBackMacro = `\`\`\`Fight_Back
   const selectedTokens = api.getSelectedOrDroppedToken();
   selectedTokens.forEach(token => {
@@ -272,7 +277,7 @@ if (
       attackerRoll: ${attackerRoll},
       attackerSkillValue: ${skillValue},
       attackerTokenId: "${tokenId || ""}",
-      weapon: ${JSON.stringify(weapon)},
+      weapon: ${JSON.stringify(weaponWithDb)},
     });
   });
 \`\`\``;
@@ -296,7 +301,7 @@ if (
       attackerRoll: ${attackerRoll},
       attackerSkillValue: ${skillValue},
       attackerTokenId: "${tokenId || ""}",
-      weapon: ${JSON.stringify(weapon)},
+      weapon: ${JSON.stringify(weaponWithDb)},
       cannotPush: true,
     });
   });
@@ -336,6 +341,11 @@ if (metadata.isDefense) {
         const wItemId = w.itemId || "";
 
         const wIsMagical = w.isMagical || false;
+        const wDamageBonus = w.damageBonus || "0";
+        const rollFormula =
+          isImpaling && isExtreme
+            ? buildImpaleFormula(dmgFormula, wDamageBonus, isMeleeWeapon)
+            : dmgFormula;
         const damageMacro = `\`\`\`Roll_Damage
   const damageMods = getEffectsAndModifiers(["damageBonus", "damagePenalty"], "melee", "${wItemId}");
   const damageMetadata = {
@@ -347,7 +357,7 @@ if (metadata.isDefense) {
     damageBonus: record?.data?.damageBonus || "0",
     attackerTokenId: "${metadata.attackerTokenId || ""}",
   };
-  api.promptRoll("Damage", "${dmgFormula}", damageMods, damageMetadata, "damage");
+  api.promptRoll("Damage", "${rollFormula}", damageMods, damageMetadata, "damage");
 \`\`\``;
         message += `\n${damageMacro}`;
       }
@@ -363,6 +373,11 @@ if (metadata.isDefense) {
       const isExtreme = metadata.attackerSuccessLevel >= SUCCESS_LEVELS.EXTREME;
       const wItemId = w.itemId || "";
       const wIsMagical = w.isMagical || false;
+      const wDamageBonus = w.damageBonus || "0";
+      const rollFormula =
+        isImpaling && isExtreme
+          ? buildImpaleFormula(dmgFormula, wDamageBonus, isMeleeWeapon)
+          : dmgFormula;
 
       const damageMacro = `\`\`\`Roll_Damage
   const damageMods = getEffectsAndModifiers(["damageBonus", "damagePenalty"], "melee", "${wItemId}");
@@ -375,7 +390,7 @@ if (metadata.isDefense) {
     damageBonus: record?.data?.damageBonus || "0",
     attackerTokenId: "${metadata.attackerTokenId || ""}",
   };
-  api.promptRoll("Damage", "${dmgFormula}", damageMods, damageMetadata, "damage");
+  api.promptRoll("Damage", "${rollFormula}", damageMods, damageMetadata, "damage");
 \`\`\``;
       message += `\n${damageMacro}`;
     }
@@ -394,6 +409,10 @@ if (isAttack && isFirearm && !isOpposed) {
     const weaponItemId = weapon.itemId || "";
 
     const wIsMagical = weapon.isMagical || false;
+    const rollFormula =
+      isImpaling && isExtreme
+        ? buildImpaleFormula(dmgFormula, "0", false)
+        : dmgFormula;
     const damageMacro = `\`\`\`Roll_Damage
   const damageMods = getEffectsAndModifiers(["damageBonus", "damagePenalty"], "ranged", "${weaponItemId}");
   const damageMetadata = {
@@ -404,7 +423,7 @@ if (isAttack && isFirearm && !isOpposed) {
     isMagical: ${wIsMagical},
     damageBonus: "0",
   };
-  api.promptRoll("Damage", "${dmgFormula}", damageMods, damageMetadata, "damage");
+  api.promptRoll("Damage", "${rollFormula}", damageMods, damageMetadata, "damage");
 \`\`\``;
     message += `\n${damageMacro}`;
   }

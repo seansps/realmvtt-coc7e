@@ -6,52 +6,64 @@
 
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
   <div style="display: flex; gap: 8px">
-    <div style="width: 100px; height: 100px; min-width: 100px; min-height: 100px">
+    <div
+      style="width: 100px; height: 100px; min-width: 100px; min-height: 100px"
+    >
       <portrait width="100px" height="100px" field="portrait"></portrait>
     </div>
     <div style="display: flex; flex-direction: column; gap: 4px; width: 100%">
-      <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
-    <numberfield
-      field="mpCost"
-      label="Magic Point Cost"
-      size="sm"
-      width="80px"
-      hidecontrols="true"
-      textalign="center"
-      placeholder="0"
-    ></numberfield>
+      <div
+        style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap"
+      >
+        <numberfield
+          field="mpCost"
+          label="Magic Point Cost"
+          size="sm"
+          width="120px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="0"
+        ></numberfield>
 
-    <stringfield
-      field="sanCost"
-      label="Sanity Cost"
-      size="sm"
-      width="80px"
-      placeholder="0"
-    ></stringfield>
+        <stringfield
+          field="sanCost"
+          label="Sanity Cost"
+          size="sm"
+          width="80px"
+          placeholder="0"
+        ></stringfield>
 
-    <numberfield
-      field="powCost"
-      label="POW Cost"
-      size="sm"
-      width="80px"
-      hidecontrols="true"
-      textalign="center"
-      placeholder="0"
-    ></numberfield>
+        <numberfield
+          field="powCost"
+          label="POW Cost"
+          size="sm"
+          width="80px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="0"
+        ></numberfield>
 
-    <stringfield
-      field="castingTime"
-      label="Casting Time"
-      size="sm"
-      width="120px"
-      placeholder="1 round"
-    ></stringfield>
+        <stringfield
+          field="castingTime"
+          label="Casting Time"
+          size="sm"
+          width="120px"
+          placeholder="1 round"
+        ></stringfield>
       </div>
     </div>
   </div>
 
-  <checkbox field="opposedPow" label="Requires Opposed POW Roll" size="sm"></checkbox>
-  <checkbox field="isMagical" label="Magical Damage (ignores armor)" size="sm"></checkbox>
+  <checkbox
+    field="opposedPow"
+    label="Requires Opposed POW Roll"
+    size="sm"
+  ></checkbox>
+  <checkbox
+    field="isMagical"
+    label="Magical Damage (ignores armor)"
+    size="sm"
+  ></checkbox>
 
   <dropdown
     field="effects"

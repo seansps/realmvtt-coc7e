@@ -1061,6 +1061,64 @@ function buildDamageFormula(weaponDamage, damageBonus, isMelee) {
   return formula;
 }
 
+/**
+ * Returns the maximum value of a dice expression like "2D6+1", "1D4", "+1D4", "-1".
+ * Handles NdX+modifier format. Returns 0 for unrecognised strings.
+ */
+function maxOfDiceExpr(expr) {
+  if (!expr) return 0;
+  const str = expr.replace(/\s/g, "").toUpperCase();
+  // Match optional leading sign, then NdX, then optional +/-constant
+  const match = str.match(/^([+-]?\d*)D(\d+)([+-]\d+)?$/);
+  if (!match) {
+    // Pure number (e.g. "+2", "-1")
+    const n = parseInt(str, 10);
+    return isNaN(n) ? 0 : n;
+  }
+  const count = parseInt(match[1] || "1", 10) || 1;
+  const faces = parseInt(match[2], 10) || 1;
+  const bonus = parseInt(match[3] || "0", 10) || 0;
+  return count * faces + bonus;
+}
+
+/**
+ * Builds the impale damage formula per CoC 7e rules:
+ *   max weapon damage + max damage bonus (melee only) + one extra weapon die roll
+ * e.g. weapon "1D6+2", DB "+1D4" → "6+2+4+1D6 default"
+ */
+function buildImpaleFormula(weaponDamage, damageBonus, isMelee) {
+  const weapStr = (weaponDamage || "1D3").replace(/\s/g, "").toUpperCase();
+
+  // Find the first die term to use as the extra bonus roll (e.g. "1D6")
+  const dieMatch = weapStr.match(/(\d*)D(\d+)/);
+  const extraDieCount = dieMatch ? (parseInt(dieMatch[1], 10) || 1) : 1;
+  const extraDieFaces = dieMatch ? parseInt(dieMatch[2], 10) : 6;
+  const extraDie = `${extraDieCount}D${extraDieFaces} default`;
+
+  // Parse weapon into parts and compute max for each
+  // Weapon may be "1D6", "1D3+2", "2D6+1D4" etc — split on + / - keeping sign
+  const parts = weapStr.split(/(?=[+-])/);
+  let maxWeapon = 0;
+  for (const part of parts) {
+    maxWeapon += maxOfDiceExpr(part);
+  }
+
+  let total = maxWeapon;
+
+  // Add max damage bonus for melee
+  if (isMelee && damageBonus && damageBonus !== "0" && damageBonus !== "None") {
+    const dbStr = damageBonus.replace(/\s/g, "").toUpperCase();
+    const dbParts = dbStr.split(/(?=[+-])/);
+    let maxDb = 0;
+    for (const part of dbParts) {
+      maxDb += maxOfDiceExpr(part);
+    }
+    total += maxDb;
+  }
+
+  return `${total}+${extraDie}`;
+}
+
 // ============================================================
 // Effect Application Helpers
 // ============================================================
