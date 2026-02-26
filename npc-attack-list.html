@@ -10,6 +10,7 @@
       damage: attack.data?.damage || "1D3",
       isImpaling: attack.data?.isImpaling || false,
       isMelee: attack.data?.isMelee || true,
+      isMagical: attack.data?.isMagical || false,
     };
 
     if (weaponData.isMelee) {
@@ -60,6 +61,7 @@
 
   <checkbox field="isMelee" label="Melee" size="xs"></checkbox>
   <checkbox field="isImpaling" label="Impale" size="xs"></checkbox>
+  <checkbox field="isMagical" label="Magic" size="xs"></checkbox>
 
   <iconbutton
     field="rollAttack"

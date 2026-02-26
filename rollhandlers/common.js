@@ -173,6 +173,16 @@ function recalcDerivedStats(fieldsToSet, rec) {
   fieldsToSet["data.luckHalf"] = Math.floor(luck / 2);
   fieldsToSet["data.luckFifth"] = Math.floor(luck / 5);
 
+  // Sum armorValue from all equipped armor items
+  const inventory = rec?.data?.inventory || [];
+  let totalArmor = 0;
+  for (const item of inventory) {
+    if (item.data?.type === "armor" && item.data?.carried === "equipped") {
+      totalArmor += parseInt(item.data?.armorValue, 10) || 0;
+    }
+  }
+  fieldsToSet["data.armor"] = totalArmor;
+
   // Sync Dodge and Credit Rating display fields from the skill list.
   // Skip if already queued in fieldsToSet (e.g. updateDodgeBase already set the correct value).
   const needsDodge = !("data.dodgeValue" in fieldsToSet);
@@ -555,6 +565,7 @@ function performOpposedAttack(
       itemId: weaponData.itemId,
       skillName: weaponData.skillName,
       malfunction: weaponData.malfunction,
+      isMagical: weaponData.isMagical || false,
     },
     ...additionalMetadata,
   });
@@ -577,6 +588,7 @@ function performFirearmAttack(
       itemId: weaponData.itemId,
       skillName: weaponData.skillName,
       malfunction: weaponData.malfunction,
+      isMagical: weaponData.isMagical || false,
     },
     ...additionalMetadata,
   });

@@ -335,6 +335,7 @@ if (metadata.isDefense) {
         const isExtreme = attackerSuccessLevel >= SUCCESS_LEVELS.EXTREME;
         const wItemId = w.itemId || "";
 
+        const wIsMagical = w.isMagical || false;
         const damageMacro = `\`\`\`Roll_Damage
   const damageMods = getEffectsAndModifiers(["damageBonus", "damagePenalty"], "melee", "${wItemId}");
   const damageMetadata = {
@@ -342,6 +343,7 @@ if (metadata.isDefense) {
     isMelee: ${isMeleeWeapon},
     isImpaling: ${isImpaling},
     isExtreme: ${isExtreme},
+    isMagical: ${wIsMagical},
     damageBonus: record?.data?.damageBonus || "0",
     attackerTokenId: "${metadata.attackerTokenId || ""}",
   };
@@ -360,6 +362,7 @@ if (metadata.isDefense) {
       const isImpaling = w.isImpaling || false;
       const isExtreme = metadata.attackerSuccessLevel >= SUCCESS_LEVELS.EXTREME;
       const wItemId = w.itemId || "";
+      const wIsMagical = w.isMagical || false;
 
       const damageMacro = `\`\`\`Roll_Damage
   const damageMods = getEffectsAndModifiers(["damageBonus", "damagePenalty"], "melee", "${wItemId}");
@@ -368,6 +371,7 @@ if (metadata.isDefense) {
     isMelee: ${isMeleeWeapon},
     isImpaling: ${isImpaling},
     isExtreme: ${isExtreme},
+    isMagical: ${wIsMagical},
     damageBonus: record?.data?.damageBonus || "0",
     attackerTokenId: "${metadata.attackerTokenId || ""}",
   };
@@ -389,6 +393,7 @@ if (isAttack && isFirearm && !isOpposed) {
     const isExtreme = successLevel >= SUCCESS_LEVELS.EXTREME;
     const weaponItemId = weapon.itemId || "";
 
+    const wIsMagical = weapon.isMagical || false;
     const damageMacro = `\`\`\`Roll_Damage
   const damageMods = getEffectsAndModifiers(["damageBonus", "damagePenalty"], "ranged", "${weaponItemId}");
   const damageMetadata = {
@@ -396,6 +401,7 @@ if (isAttack && isFirearm && !isOpposed) {
     isMelee: false,
     isImpaling: ${isImpaling},
     isExtreme: ${isExtreme},
+    isMagical: ${wIsMagical},
     damageBonus: "0",
   };
   api.promptRoll("Damage", "${dmgFormula}", damageMods, damageMetadata, "damage");

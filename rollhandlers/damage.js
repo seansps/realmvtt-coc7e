@@ -15,6 +15,7 @@ const isMelee = metadata.isMelee || false;
 const isImpaling = metadata.isImpaling || false;
 const isExtreme = metadata.isExtreme || false;
 const damageBonus = metadata.damageBonus || "0";
+const isMagical = metadata.isMagical || false;
 
 const tags = [];
 tags.push({
@@ -50,6 +51,12 @@ if (isMelee && damageBonus && damageBonus !== "0") {
     tooltip: `Damage Bonus: ${damageBonus}`,
   });
 }
+if (isMagical) {
+  tags.push({
+    name: "Magical",
+    tooltip: "Magical damage — ignores armor",
+  });
+}
 
 // totalDamage is baked in as a literal when the handler runs.
 // The Apply_Damage macro reads the token live when clicked.
@@ -62,7 +69,7 @@ if (!tokens || tokens.length === 0) {
 }
 tokens.forEach(function(token) {
   const totalDmg = ${totalDamage};
-  const armor = parseInt(token.data?.armor, 10) || 0;
+  const armor = ${isMagical} ? 0 : (parseInt(token.data?.armor, 10) || 0);
   const finalDamage = Math.max(0, totalDmg - armor);
   const oldHp = parseInt(token.data?.curHp, 10) || 0;
   const maxHp = parseInt(token.data?.maxHp, 10) || 1;
