@@ -49,6 +49,11 @@
         if (stat === "edu") {
           updateLanguageOwnBase(freshRecord, derivedToSet);
         }
+        // If POW changed, sync sanBarMax (used by token SAN progress bar)
+        if (stat === "pow") {
+          const maxSan = parseInt(freshRecord?.data?.maxSan, 10) || 99;
+          derivedToSet["data.sanBarMax"] = Math.min(val, maxSan);
+        }
 
         if (Object.keys(derivedToSet).length > 0) {
           api.setValues(derivedToSet);
@@ -225,6 +230,48 @@
   function onMajorWoundChange(value) {
     // Major wound applies a penalty die to physical actions
     // This is tracked in metadata during rolls
+  }
+
+  function onRest() {
+    // CoC 7e rest rules (8 hours):
+    // - Fully restores Magic Points
+    // - Naturally heals 1D3 HP (slow recovery — not full heal)
+    // SAN, Major Wound, Dying, Unconscious are NOT automatically cleared
+    const curMp = parseInt(record?.data?.curMp, 10) || 0;
+    const maxMp = parseInt(record?.data?.maxMp, 10) || 0;
+    const curHp = parseInt(record?.data?.curHp, 10) || 0;
+    const maxHp = parseInt(record?.data?.maxHp, 10) || 0;
+
+    const healRoll = api.rollInstant("1d3");
+    const hpHealed = healRoll?.total || 1;
+    const newHp = Math.min(maxHp, curHp + hpHealed);
+    const hpActuallyHealed = newHp - curHp;
+
+    const fieldsToSet = {
+      "data.curMp": maxMp,
+      "data.curHp": newHp,
+    };
+
+    api.setValues(fieldsToSet, () => {
+      const tags = [
+        { name: "Rest", tooltip: "8 Hours Rest" },
+        {
+          name: `HP +${hpActuallyHealed}`,
+          tooltip: `Natural healing: ${hpActuallyHealed} HP restored (1D3 roll)`,
+        },
+        {
+          name: "MP Restored",
+          tooltip: `Magic Points fully restored to ${maxMp}`,
+        },
+      ];
+
+      let message = `\n**[center]Rest Complete[/center]**`;
+      message += `\n[center]After 8 hours of rest:[/center]`;
+      message += `\n[center][color=green]HP: +${hpActuallyHealed} (${newHp}/${maxHp})[/color] — [color=violet]MP: Fully Restored (${maxMp}/${maxMp})[/color][/center]`;
+      message += `\n[center][color=gray]Sanity, injuries, and mental conditions are not recovered by rest alone.[/color][/center]`;
+
+      api.sendMessage(message, undefined, [], tags);
+    });
   }
 </script>
 
@@ -820,6 +867,13 @@
               size="lg"
             ></progressbar>
           </div>
+          <iconbutton
+            field="restBtn"
+            size="md"
+            variant="outline"
+            options='[{"icon": "IconBed", "label": "Rest (8 Hours)", "value": "rest"}]'
+            onclick="onRest()"
+          ></iconbutton>
         </div>
         <div style="display: flex; flex-direction: row; gap: 8px">
           <checkbox

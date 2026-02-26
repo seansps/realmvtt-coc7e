@@ -13,8 +13,11 @@
 
     // Cthulhu Mythos caps max sanity at 99 - value
     if (skill?.name === "Cthulhu Mythos") {
+      const newMaxSan = 99 - val;
+      const pow = parseInt(record?.data?.pow, 10) || 0;
       fieldsToSet["data.cthulhuMythos"] = val;
-      fieldsToSet["data.maxSan"] = 99 - val;
+      fieldsToSet["data.maxSan"] = newMaxSan;
+      fieldsToSet["data.sanBarMax"] = Math.min(pow, newMaxSan);
     }
 
     // Dodge: sync derived display fields on combat tab

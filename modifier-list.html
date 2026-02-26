@@ -1,5 +1,6 @@
 <script>
   function onModifierTypeChange(value) {
+    const modPath = dataPath.replace(".data.type", "");
     const noValueTypes = [
       "bonusDie",
       "penaltyDie",
@@ -7,15 +8,17 @@
       "immuneToImpale",
     ];
     const noField = ["immuneToMajorWound", "immuneToImpale"];
+    const isDamage = value === "damageBonus" || value === "damagePenalty";
     const needsValue = !noValueTypes.includes(value);
     const needsField = !noField.includes(value);
 
     api.setValues({
-      "fields.value.hidden": !needsValue,
-      "fields.valueType.hidden": !needsValue,
-      "fields.field.hidden": !needsField,
-      "fields.active.hidden": false,
-      "fields.itemOnly.hidden": false,
+      [`${modPath}.fields.value.hidden`]: !needsValue,
+      [`${modPath}.fields.valueType.hidden`]: !needsValue,
+      [`${modPath}.fields.fieldFreeText.hidden`]: isDamage || !needsField,
+      [`${modPath}.fields.fieldDropdown.hidden`]: !isDamage || !needsField,
+      [`${modPath}.fields.active.hidden`]: false,
+      [`${modPath}.fields.itemOnly.hidden`]: false,
     });
   }
 </script>
@@ -53,13 +56,31 @@
     ]'
   ></dropdown>
 
-  <stringfield
-    field="field"
-    label="Field"
-    size="xs"
-    width="120px"
-    placeholder="skill/stat/all"
-  ></stringfield>
+  <!-- Free-text field for skill/stat/bonusDie modifiers -->
+  <box field="fieldFreeText">
+    <stringfield
+      field="field"
+      label="Field"
+      size="xs"
+      width="120px"
+      placeholder="skill/stat/all"
+    ></stringfield>
+  </box>
+
+  <!-- Dropdown for damageBonus/damagePenalty -->
+  <box field="fieldDropdown" hidden="true">
+    <dropdown
+      field="field"
+      label="Applies To"
+      size="xs"
+      width="120px"
+      options='[
+        {"label": "All Attacks", "value": "all"},
+        {"label": "Melee Only", "value": "melee"},
+        {"label": "Ranged Only", "value": "ranged"}
+      ]'
+    ></dropdown>
+  </box>
 
   <dropdown
     field="valueType"

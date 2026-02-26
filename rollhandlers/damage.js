@@ -16,6 +16,8 @@ const isImpaling = metadata.isImpaling || false;
 const isExtreme = metadata.isExtreme || false;
 const damageBonus = metadata.damageBonus || "0";
 const isMagical = metadata.isMagical || false;
+// Active damage modifiers from effects/equipped items (already baked into roll.total)
+const damageModifiers = data?.roll?.modifiers || [];
 
 const tags = [];
 tags.push({
@@ -51,6 +53,15 @@ if (isMelee && damageBonus && damageBonus !== "0") {
     tooltip: `Damage Bonus: ${damageBonus}`,
   });
 }
+// Tags for active damage modifiers from effects/items
+damageModifiers.forEach(function (mod) {
+  if (mod.active === false) return;
+  const sign = mod.value >= 0 ? "+" : "";
+  tags.push({
+    name: `${mod.name}: ${sign}${mod.value}`,
+    tooltip: mod.tooltip || mod.name,
+  });
+});
 if (isMagical) {
   tags.push({
     name: "Magical",

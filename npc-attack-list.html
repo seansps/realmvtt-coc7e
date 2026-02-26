@@ -4,33 +4,39 @@
     const attack = api.getValue(attackPath);
     const weaponName = attack.name || "Attack";
     const skillValue = parseInt(attack.data?.skillValue, 10) || 0;
+    const isMelee = attack.data?.isMelee !== false;
+
+    // Auto-detect animation, allow per-attack override (set via fxcontrol)
+    const animation =
+      attack.data?.animation ||
+      getAnimationFor({ weaponName, isMelee, skillName: weaponName });
 
     const weaponData = {
       name: weaponName,
       damage: attack.data?.damage || "1D3",
       isImpaling: attack.data?.isImpaling || false,
-      isMelee: attack.data?.isMelee || true,
+      isMelee: isMelee,
       isMagical: attack.data?.isMagical || false,
+      animation: animation,
     };
 
     if (weaponData.isMelee) {
-      performOpposedAttack(record, weaponName, skillValue, weaponData);
+      performOpposedAttack(record, weaponName, skillValue, weaponData, {
+        animation,
+      });
     } else {
-      performFirearmAttack(record, weaponName, skillValue, weaponData);
+      performFirearmAttack(record, weaponName, skillValue, weaponData, {
+        animation,
+      });
     }
   }
 </script>
 
 <!-- NPC Attack Row -->
-<div
-  style="
-    display: flex;
-    flex-direction: row;
-    gap: 4px;
-    align-items: center;
-  "
->
-  <div style="min-width: 100px; width: 100%">
+<div style="display: flex; flex-direction: row; gap: 4px; align-items: center">
+  <portrait field="portrait" width="36px" height="36px"></portrait>
+
+  <div style="flex: 1">
     <namefield
       placeholder="Attack..."
       size="xs"
@@ -44,7 +50,7 @@
   <numberfield
     placeholder="0"
     size="xs"
-    width="42px"
+    width="45px"
     field="skillValue"
     label="Skill%"
     hidecontrols="true"

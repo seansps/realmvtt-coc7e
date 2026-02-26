@@ -232,14 +232,14 @@ function getEffectsAndModifiersForToken(
   }
 
   // Helper: process a single modifier from a source
-  function processMod(mod, sourceName, sourceId, isEffect) {
+  function processMod(mod, sourceName, sourceId, isEffect, sourceFromId) {
     if (!mod?.data?.type) return;
     if (types.length > 0 && !types.includes(mod.data.type)) return;
     if (!fieldMatches(mod.data.field)) return;
 
-    // itemOnly filtering
-    if (mod.data.itemOnly && itemId && sourceId !== itemId) return;
+    // itemOnly filtering — match by inventory instance ID or fromId (source item ID)
     if (mod.data.itemOnly && !itemId) return;
+    if (mod.data.itemOnly && itemId && sourceId !== itemId && sourceFromId !== itemId) return;
 
     const isPenalty = mod.data.type.toLowerCase().includes("penalty");
 
@@ -278,13 +278,15 @@ function getEffectsAndModifiersForToken(
     }
   }
 
-  // 2. Equipped items from inventory
+  // 2. Equipped items from inventory (+ the specific attacking weapon by itemId regardless of carried state)
   const inventory = target.data?.inventory || [];
   for (const item of inventory) {
-    if (item.data?.carried !== "equipped") continue;
+    const isEquipped = item.data?.carried === "equipped";
+    const isAttackingWeapon = itemId && (item._id === itemId || item.data?.fromId === itemId);
+    if (!isEquipped && !isAttackingWeapon) continue;
     const mods = item.data?.modifiers || [];
     for (const mod of mods) {
-      processMod(mod, item.name || "Item", item._id, false);
+      processMod(mod, item.name || "Item", item._id, false, item.data?.fromId);
     }
   }
 

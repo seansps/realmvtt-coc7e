@@ -1,41 +1,69 @@
 <script>
   function onLoad() {
-    // Show/hide sections based on NPC type
     onTypeChange(record?.data?.type || "npc");
   }
 
   function onTypeChange(value) {
     const isNpc = value === "npc";
     const isCreature = value === "creature";
-    const isDeity = value === "deity";
+    const isVehicle = value === "vehicle";
 
-    api.setValues({
-      // Full characteristics shown for NPCs and creatures
-      "fields.app.hidden": isDeity,
-      "fields.appHalf.hidden": isDeity,
-      "fields.appFifth.hidden": isDeity,
-      "fields.edu.hidden": isCreature || isDeity,
-      "fields.eduHalf.hidden": isCreature || isDeity,
-      "fields.eduFifth.hidden": isCreature || isDeity,
-      // Skills only for NPCs
-      "fields.npcSkills.hidden": isDeity,
+    const valuesToSet = {
+      // Characteristics hidden for vehicles
+      "fields.characteristicsSection.hidden": isVehicle,
+      // APP hidden for creatures
+      "fields.app.hidden": isCreature,
+      "fields.appHalf.hidden": isCreature,
+      "fields.appFifth.hidden": isCreature,
+      // EDU hidden for creatures and vehicles
+      "fields.edu.hidden": isCreature || isVehicle,
+      "fields.eduHalf.hidden": isCreature || isVehicle,
+      "fields.eduFifth.hidden": isCreature || isVehicle,
+      // Skills list hidden for vehicles
+      "fields.npcSkills.hidden": isVehicle,
       // Creature-specific
-      "fields.armorNote.hidden": !isCreature && !isDeity,
-      "fields.sanLoss.hidden": !isCreature && !isDeity,
-      "fields.specialAbilities.hidden": !isCreature && !isDeity,
-      // Deity-specific
-      "fields.cultInfo.hidden": !isDeity,
-    });
+      "fields.sanLoss.hidden": !isCreature,
+      "fields.specialAbilities.hidden": !isCreature,
+      // Vehicle-specific
+      "fields.vehicleStats.hidden": !isVehicle,
+      // Hide MP, DB/Build for vehicles
+      "fields.mpGroup.hidden": isVehicle,
+      "fields.dbGroup.hidden": isVehicle,
+      // Hide attacks for vehicles
+      "fields.vehicleAttacksSection.hidden": isVehicle,
+    };
+
+    // Hide Spells tab for vehicles (set only when needed to avoid loops)
+    const currentSpellsHidden =
+      record.tabs && record.tabs.Spells && record.tabs.Spells.hidden;
+    if (isVehicle && !currentSpellsHidden) {
+      valuesToSet["tabs.Spells.hidden"] = true;
+    } else if (!isVehicle && currentSpellsHidden) {
+      valuesToSet["tabs.Spells.hidden"] = false;
+    }
+
+    api.setValues(valuesToSet);
   }
 
   function onStatChange(value, stat) {
     const val = parseInt(value, 10);
     if (isNaN(val)) return;
-    api.setValues({
-      [`data.${stat}`]: val,
-      [`data.${stat}Half`]: getHalf(val),
-      [`data.${stat}Fifth`]: getFifth(val),
-    });
+
+    // Build a temporary record with the updated stat so recalcDerivedStats sees the new value
+    const tempRec = { data: { ...(record?.data || {}) } };
+    tempRec.data[stat] = val;
+
+    const fieldsToSet = {};
+    recalcDerivedStats(fieldsToSet, tempRec);
+
+    // NPCs don't use SAN derived fields
+    delete fieldsToSet["data.maxSan"];
+    delete fieldsToSet["data.san"];
+
+    // Ensure the typed value is set (recalcDerivedStats sets half/fifth via its own loop)
+    fieldsToSet[`data.${stat}`] = val;
+
+    api.setValues(fieldsToSet);
   }
 
   function rollNpcStat(stat) {
@@ -47,12 +75,29 @@
     const dex = parseInt(record?.data?.dex, 10) || 0;
     const useRoll = api.getSetting("rollInit") === "yes";
     const formula = useRoll ? "1d6 default" : `${dex}`;
-    const modifiers = useRoll ? [{ name: "DEX", value: dex, active: true }] : [];
-    const tooltip = useRoll ? "Initiative (1D6 + DEX)" : "Initiative (DEX Order)";
+    const modifiers = useRoll
+      ? [{ name: "DEX", value: dex, active: true }]
+      : [];
+    const tooltip = useRoll
+      ? "Initiative (1D6 + DEX)"
+      : "Initiative (DEX Order)";
     if (record.linked === undefined) {
-      api.promptRoll("Roll/Set Initiative", formula, modifiers, { rollName: "Initiative", tooltip }, "initiative");
+      api.promptRoll(
+        "Roll/Set Initiative",
+        formula,
+        modifiers,
+        { rollName: "Initiative", tooltip },
+        "initiative",
+      );
     } else {
-      api.promptRollForToken(record, "Roll/Set Initiative", formula, modifiers, { rollName: "Initiative", tooltip }, "initiative");
+      api.promptRollForToken(
+        record,
+        "Roll/Set Initiative",
+        formula,
+        modifiers,
+        { rollName: "Initiative", tooltip },
+        "initiative",
+      );
     }
   }
 
@@ -64,199 +109,710 @@
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
-  <!-- Header -->
-  <div style="display: flex; flex-direction: row; gap: 8px; align-items: flex-start">
-    <portrait field="portrait" width="100px" height="100px"></portrait>
-    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
-      <dropdown
-        field="type"
-        label="Type"
-        size="sm"
-        width="120px"
-        onchange="onTypeChange(value)"
-        onload="onLoad()"
-        options='[
-          {"label": "NPC", "value": "npc"},
-          {"label": "Creature", "value": "creature"},
-          {"label": "Deity", "value": "deity"}
-        ]'
-      ></dropdown>
+  <!-- Header: Portrait + Name + Type -->
+  <div
+    style="
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      align-items: flex-start;
+    "
+  >
+    <portrait field="portrait" width="72px" height="72px"></portrait>
+    <div
+      style="
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+      "
+    >
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 8px;
+          flex-wrap: wrap;
+          align-items: center;
+        "
+      >
+        <dropdown
+          field="type"
+          label="Type"
+          size="sm"
+          width="130px"
+          onchange="onTypeChange(value)"
+          onload="onLoad()"
+          options='[
+            {"label": "NPC", "value": "npc"},
+            {"label": "Creature", "value": "creature"},
+            {"label": "Vehicle", "value": "vehicle"}
+          ]'
+        ></dropdown>
+        <dropdown
+          field="size"
+          label="Token Size"
+          size="sm"
+          width="130px"
+          placeholder="1 (Normal)"
+          options='[
+            {"label": "0.5 (Tiny)", "value": "0.5"},
+            {"label": "0.75 (Small)", "value": "0.75"},
+            {"label": "1 (Normal)", "value": "1"},
+            {"label": "2 (Large)", "value": "2"},
+            {"label": "3 (Huge)", "value": "3"},
+            {"label": "4 (Enormous)", "value": "4"}
+          ]'
+        ></dropdown>
+        <stringfield
+          field="senses"
+          label="Senses"
+          size="sm"
+          width="180px"
+          placeholder="Nightvision 60, etc."
+        ></stringfield>
+      </div>
     </div>
   </div>
 
   <divider size="xs"></divider>
 
   <!-- Characteristics -->
-  <label variant="bold" size="sm" label="Characteristics"></label>
-  <div style="display: flex; flex-direction: row; gap: 4px; flex-wrap: wrap">
-    <!-- STR -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcStr" label="STR" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('str')"></button>
-      <numberfield field="str" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'str')"></numberfield>
-      <numberfield field="strHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="strFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
+  <box field="characteristicsSection">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <label variant="bold" size="sm" label="Characteristics"></label>
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+        "
+      >
+        <!-- Row Labels -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding-bottom: 2px;
+            margin-right: 4px;
+          "
+        >
+          <div style="height: 24px"></div>
+          <label size="xs" color="dimmed" label="Reg"></label>
+          <label size="xs" color="dimmed" label="½"></label>
+          <label size="xs" color="dimmed" label="⅕"></label>
+        </div>
+
+        <!-- STR -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcStr"
+            label="STR"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('str')"
+          ></button>
+          <numberfield
+            field="str"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'str')"
+          ></numberfield>
+          <numberfield
+            field="strHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="strFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- CON -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcCon"
+            label="CON"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('con')"
+          ></button>
+          <numberfield
+            field="con"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'con')"
+          ></numberfield>
+          <numberfield
+            field="conHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="conFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- SIZ -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcSiz"
+            label="SIZ"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('siz')"
+          ></button>
+          <numberfield
+            field="siz"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'siz')"
+          ></numberfield>
+          <numberfield
+            field="sizHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="sizFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- DEX -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcDex"
+            label="DEX"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('dex')"
+          ></button>
+          <numberfield
+            field="dex"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'dex')"
+          ></numberfield>
+          <numberfield
+            field="dexHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="dexFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- APP (hidden for creatures) -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcApp"
+            label="APP"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('app')"
+          ></button>
+          <numberfield
+            field="app"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'app')"
+          ></numberfield>
+          <numberfield
+            field="appHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="appFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- INT -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcInt"
+            label="INT"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('int')"
+          ></button>
+          <numberfield
+            field="int"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'int')"
+          ></numberfield>
+          <numberfield
+            field="intHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="intFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- POW -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcPow"
+            label="POW"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('pow')"
+          ></button>
+          <numberfield
+            field="pow"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'pow')"
+          ></numberfield>
+          <numberfield
+            field="powHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="powFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+
+        <!-- EDU (hidden for creatures) -->
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: center;
+            flex: 1;
+          "
+        >
+          <button
+            field="rollNpcEdu"
+            label="EDU"
+            size="xs"
+            color="primary"
+            variant="subtle"
+            onclick="rollNpcStat('edu')"
+          ></button>
+          <numberfield
+            field="edu"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            onchange="onStatChange(value, 'edu')"
+          ></numberfield>
+          <numberfield
+            field="eduHalf"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+          <numberfield
+            field="eduFifth"
+            size="xs"
+            width="100%"
+            hidecontrols="true"
+            textalign="center"
+            editable="false"
+          ></numberfield>
+        </div>
+      </div>
     </div>
-    <!-- CON -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcCon" label="CON" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('con')"></button>
-      <numberfield field="con" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'con')"></numberfield>
-      <numberfield field="conHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="conFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-    <!-- SIZ -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcSiz" label="SIZ" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('siz')"></button>
-      <numberfield field="siz" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'siz')"></numberfield>
-      <numberfield field="sizHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="sizFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-    <!-- DEX -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcDex" label="DEX" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('dex')"></button>
-      <numberfield field="dex" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'dex')"></numberfield>
-      <numberfield field="dexHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="dexFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-    <!-- APP -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcApp" label="APP" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('app')"></button>
-      <numberfield field="app" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'app')"></numberfield>
-      <numberfield field="appHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="appFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-    <!-- INT -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcInt" label="INT" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('int')"></button>
-      <numberfield field="int" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'int')"></numberfield>
-      <numberfield field="intHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="intFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-    <!-- POW -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcPow" label="POW" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('pow')"></button>
-      <numberfield field="pow" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'pow')"></numberfield>
-      <numberfield field="powHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="powFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-    <!-- EDU -->
-    <div style="display: flex; flex-direction: column; gap: 2px; align-items: center">
-      <button field="rollNpcEdu" label="EDU" size="xs" width="44px" color="primary" variant="subtle" onclick="rollNpcStat('edu')"></button>
-      <numberfield field="edu" size="xs" width="44px" hidecontrols="true" textalign="center" onchange="onStatChange(value, 'edu')"></numberfield>
-      <numberfield field="eduHalf" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-      <numberfield field="eduFifth" size="xs" width="44px" hidecontrols="true" textalign="center" editable="false"></numberfield>
-    </div>
-  </div>
+  </box>
 
   <divider size="xs"></divider>
 
   <!-- Derived Stats -->
-  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
-    <div style="display: flex; flex-direction: row; gap: 4px; align-items: center">
-      <numberfield field="curHp" size="xs" width="40px" hidecontrols="true" textalign="center" label="HP"></numberfield>
+  <div
+    style="
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    "
+  >
+    <!-- HP -->
+    <div
+      style="display: flex; flex-direction: row; gap: 4px; align-items: center"
+    >
+      <numberfield
+        field="curHp"
+        size="xs"
+        width="40px"
+        hidecontrols="true"
+        textalign="center"
+        label="HP"
+      ></numberfield>
       <div style="height: 24px; display: flex; align-items: center">
         <divider orientation="vertical" size="xs" color="primary"></divider>
       </div>
-      <numberfield field="maxHp" size="xs" width="40px" hidecontrols="true" textalign="center" label="Max"></numberfield>
+      <numberfield
+        field="maxHp"
+        size="xs"
+        width="40px"
+        hidecontrols="true"
+        textalign="center"
+        label="Max"
+      ></numberfield>
     </div>
-    <div style="display: flex; flex-direction: row; gap: 4px; align-items: center">
-      <numberfield field="curMp" size="xs" width="40px" hidecontrols="true" textalign="center" label="MP"></numberfield>
-      <div style="height: 24px; display: flex; align-items: center">
-        <divider orientation="vertical" size="xs" color="primary"></divider>
-      </div>
-      <numberfield field="maxMp" size="xs" width="40px" hidecontrols="true" textalign="center" label="Max"></numberfield>
-    </div>
-    <stringfield field="damageBonus" label="DB" size="sm" width="60px"></stringfield>
-    <numberfield field="build" label="Build" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
-    <numberfield field="mov" label="Move" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
-    <numberfield field="armor" label="Armor" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
-    <button field="rollInitiative" label="Initiative" size="xs" color="primary" variant="subtle" onclick="rollNpcInitiative()"></button>
-  </div>
 
-  <!-- Token Settings -->
-  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
-    <dropdown
-      field="size"
-      label="Token Size"
+    <!-- MP (hidden for vehicles) -->
+    <box field="mpGroup">
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <numberfield
+          field="curMp"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          label="MP"
+        ></numberfield>
+        <div style="height: 24px; display: flex; align-items: center">
+          <divider orientation="vertical" size="xs" color="primary"></divider>
+        </div>
+        <numberfield
+          field="maxMp"
+          size="xs"
+          width="40px"
+          hidecontrols="true"
+          textalign="center"
+          label="Max"
+        ></numberfield>
+      </div>
+    </box>
+
+    <!-- DB + Build (hidden for vehicles) -->
+    <box field="dbGroup">
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+        "
+      >
+        <stringfield
+          field="damageBonus"
+          label="DB"
+          size="sm"
+          width="60px"
+        ></stringfield>
+        <numberfield
+          field="build"
+          label="Build"
+          size="sm"
+          width="50px"
+          hidecontrols="true"
+          textalign="center"
+        ></numberfield>
+      </div>
+    </box>
+
+    <numberfield
+      field="mov"
+      label="Move"
       size="sm"
-      width="120px"
-      placeholder="1 (Normal)"
-      options='[
-        {"label": "0.5 (Tiny)", "value": "0.5"},
-        {"label": "0.75 (Small)", "value": "0.75"},
-        {"label": "1 (Normal)", "value": "1"},
-        {"label": "2 (Large)", "value": "2"},
-        {"label": "3 (Huge)", "value": "3"},
-        {"label": "4 (Enormous)", "value": "4"}
-      ]'
-    ></dropdown>
+      width="50px"
+      hidecontrols="true"
+      textalign="center"
+    ></numberfield>
+    <numberfield
+      field="armor"
+      label="Armor"
+      size="sm"
+      width="50px"
+      hidecontrols="true"
+      textalign="center"
+    ></numberfield>
+
+    <!-- SAN Loss (creatures only) -->
     <stringfield
-      field="senses"
-      label="Senses"
+      field="sanLoss"
+      label="SAN Loss"
       size="sm"
-      width="200px"
-      placeholder="Darkvision 60ft..."
+      width="80px"
+      placeholder="1/1D10"
+      hidden="true"
     ></stringfield>
+
+    <button
+      field="rollInitiative"
+      label="Roll/Set Initiative"
+      size="xs"
+      color="primary"
+      variant="outline"
+      onclick="rollNpcInitiative()"
+    ></button>
   </div>
 
-  <!-- SAN Loss (creatures/deities) -->
-  <stringfield field="sanLoss" label="SAN Loss" size="sm" width="120px" placeholder="1/1D10" hidden="true"></stringfield>
-
+  <!-- Vehicle Stats (vehicles only) -->
+  <box field="vehicleStats" hidden="true">
+    <div
+      style="
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+      "
+    >
+      <numberfield
+        field="vehicleMov"
+        label="MOV"
+        size="sm"
+        width="50px"
+        hidecontrols="true"
+        textalign="center"
+        placeholder="13"
+      ></numberfield>
+      <numberfield
+        field="vehicleBuild"
+        label="Build"
+        size="sm"
+        width="50px"
+        hidecontrols="true"
+        textalign="center"
+        placeholder="5"
+      ></numberfield>
+      <numberfield
+        field="vehicleArmor"
+        label="Armor"
+        size="sm"
+        width="50px"
+        hidecontrols="true"
+        textalign="center"
+        placeholder="2"
+      ></numberfield>
+      <numberfield
+        field="passengers"
+        label="Passengers"
+        size="sm"
+        width="70px"
+        hidecontrols="true"
+        textalign="center"
+        placeholder="4"
+      ></numberfield>
+      <stringfield
+        field="vehicleSkill"
+        label="Skill"
+        size="sm"
+        width="120px"
+        placeholder="Drive Auto"
+      ></stringfield>
+    </div>
+  </box>
   <divider size="xs"></divider>
 
-  <!-- Attacks -->
-  <label variant="bold" size="sm" label="Attacks"></label>
-  <list
-    listtype="npc_attack_list"
-    field="attacks"
-    variant="striped"
-    height="100%"
-  ></list>
-
-  <!-- Skills (NPCs only) -->
-  <box field="npcSkills" hidden="false">
+  <!-- Attacks (hidden for vehicles) -->
+  <box field="vehicleAttacksSection">
     <div style="display: flex; flex-direction: column; gap: 4px">
-      <divider size="xs"></divider>
-      <label variant="bold" size="sm" label="Skills"></label>
-      <richtextfield
-        field="skillsText"
-        placeholder="Dodge 40%, Listen 50%, Spot Hidden 60%..."
-        height="80px"
-      ></richtextfield>
+      <label variant="bold" size="sm" label="Attacks"></label>
+      <list
+        listtype="npc_attack_list"
+        field="attacks"
+        variant="striped"
+        height="100%"
+      ></list>
     </div>
   </box>
 
-  <!-- Special Abilities (creatures/deities) -->
-  <richtextfield
-    field="specialAbilities"
-    placeholder="Special abilities, powers, immunities..."
-    height="120px"
-    hidden="true"
-  ></richtextfield>
+  <!-- Skills (hidden for vehicles) -->
+  <box field="npcSkills">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <divider size="xs"></divider>
+      <!-- Skills Header -->
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 4px;
+          align-items: center;
+          padding: 0 4px;
+        "
+      >
+        <div style="flex: 1; min-width: 0">
+          <label variant="bold" size="sm" label="Skills"></label>
+        </div>
+        <div style="width: 42px; text-align: center">
+          <label size="xs" color="dimmed" label="Value"></label>
+        </div>
+        <div style="width: 36px; text-align: center">
+          <label size="xs" color="dimmed" label="Half"></label>
+        </div>
+        <div style="width: 36px; text-align: center">
+          <label size="xs" color="dimmed" label="Fifth"></label>
+        </div>
+        <div style="width: 32px"></div>
+      </div>
+      <list
+        listtype="npc_skill_list"
+        field="npcSkillList"
+        variant="striped"
+        height="100%"
+      ></list>
+    </div>
+  </box>
 
-  <!-- Cult Info (deities) -->
-  <richtextfield
-    field="cultInfo"
-    placeholder="Cult information, worship, followers..."
-    height="100px"
-    hidden="true"
-  ></richtextfield>
-
-  <!-- Spells -->
-  <accordion label="Spells" size="sm">
-    <list
-      listtype="spell_list"
-      field="spells"
-      variant="striped"
-      height="100%"
-    ></list>
-  </accordion>
-
-  <!-- Description -->
-  <accordion label="Description" size="sm">
-    <richtextfield
-      field="description"
-      placeholder="Description and notes..."
-      height="150px"
-    ></richtextfield>
-  </accordion>
+  <!-- Special Abilities (creatures only) -->
+  <box field="specialAbilities" hidden="true">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <divider size="xs"></divider>
+      <label variant="bold" size="sm" label="Special Abilities"></label>
+      <richtextfield
+        field="specialAbilitiesText"
+        placeholder="Special abilities, powers, immunities..."
+        height="120px"
+      ></richtextfield>
+    </div>
+  </box>
 </div>

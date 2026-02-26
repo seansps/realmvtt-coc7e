@@ -34,10 +34,9 @@
       const valuesToSet = {};
 
       if (item.data?.packCash) {
-        valuesToSet["data.cash"] =
-          (record?.data?.cash || "") +
-          (record?.data?.cash ? " + " : "") +
-          item.data.packCash;
+        const currentCash = parseFloat(record?.data?.cash || "0") || 0;
+        const packCash = parseFloat(item.data.packCash) || 0;
+        valuesToSet["data.cash"] = currentCash + packCash;
       }
 
       const itemsToAdd = itemsInPack
@@ -151,13 +150,15 @@
       width="120px"
       placeholder=""
     ></stringfield>
-    <stringfield
+    <numberfield
       field="cash"
       label="Cash"
       size="sm"
       width="100px"
-      placeholder="$0"
-    ></stringfield>
+      hidecontrols="true"
+      textalign="center"
+      placeholder="0"
+    ></numberfield>
     <numberfield
       field="creditRating"
       label="Credit Rating"
