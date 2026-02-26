@@ -47,18 +47,13 @@ if (isExtreme && isImpaling) {
 
 message += `\n\n**[center]Damage: ${totalDamage}[/center]**`;
 
-if (isMelee && damageBonus && damageBonus !== "0") {
-  tags.push({
-    name: `DB: ${damageBonus}`,
-    tooltip: `Damage Bonus: ${damageBonus}`,
-  });
-}
-// Tags for active damage modifiers from effects/items
+// Tags for active damage modifiers from effects/items (DB for melee is included here)
 damageModifiers.forEach(function (mod) {
   if (mod.active === false) return;
-  const sign = mod.value >= 0 ? "+" : "";
+  const valStr = String(mod.value);
+  const displayVal = valStr.startsWith("-") ? valStr : `+${valStr}`;
   tags.push({
-    name: `${mod.name}: ${sign}${mod.value}`,
+    name: `${mod.name}: ${displayVal}`,
     tooltip: mod.tooltip || mod.name,
   });
 });

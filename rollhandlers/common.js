@@ -239,7 +239,13 @@ function getEffectsAndModifiersForToken(
 
     // itemOnly filtering — match by inventory instance ID or fromId (source item ID)
     if (mod.data.itemOnly && !itemId) return;
-    if (mod.data.itemOnly && itemId && sourceId !== itemId && sourceFromId !== itemId) return;
+    if (
+      mod.data.itemOnly &&
+      itemId &&
+      sourceId !== itemId &&
+      sourceFromId !== itemId
+    )
+      return;
 
     const isPenalty = mod.data.type.toLowerCase().includes("penalty");
 
@@ -282,7 +288,8 @@ function getEffectsAndModifiersForToken(
   const inventory = target.data?.inventory || [];
   for (const item of inventory) {
     const isEquipped = item.data?.carried === "equipped";
-    const isAttackingWeapon = itemId && (item._id === itemId || item.data?.fromId === itemId);
+    const isAttackingWeapon =
+      itemId && (item._id === itemId || item.data?.fromId === itemId);
     if (!isEquipped && !isAttackingWeapon) continue;
     const mods = item.data?.modifiers || [];
     for (const mod of mods) {
@@ -557,6 +564,20 @@ function performOpposedAttack(
   weaponData,
   additionalMetadata = {},
 ) {
+  const damageBonus = rec?.data?.damageBonus || "0";
+  const damageModifiers = [...(weaponData.damageModifiers || [])];
+
+  // Prepend DB as a modifier so the engine rolls it alongside effect modifiers
+  const dbFormula = parseDamageBonus(damageBonus);
+  if (dbFormula) {
+    damageModifiers.unshift({
+      name: "DB",
+      value: dbFormula,
+      active: true,
+      tooltip: `Damage Bonus: ${damageBonus}`,
+    });
+  }
+
   performSkillCheck(rec, skillName, skillValue, {
     isAttack: true,
     isMelee: true,
@@ -568,6 +589,8 @@ function performOpposedAttack(
       skillName: weaponData.skillName,
       malfunction: weaponData.malfunction,
       isMagical: weaponData.isMagical || false,
+      damageBonus: damageBonus,
+      damageModifiers: damageModifiers,
     },
     ...additionalMetadata,
   });
@@ -580,6 +603,9 @@ function performFirearmAttack(
   weaponData,
   additionalMetadata = {},
 ) {
+  // Firearms don't use DB, but still carry effect-based damage modifiers
+  const damageModifiers = [...(weaponData.damageModifiers || [])];
+
   performSkillCheck(rec, skillName, skillValue, {
     isAttack: true,
     isFirearm: true,
@@ -591,6 +617,8 @@ function performFirearmAttack(
       skillName: weaponData.skillName,
       malfunction: weaponData.malfunction,
       isMagical: weaponData.isMagical || false,
+      damageBonus: "0",
+      damageModifiers: damageModifiers,
     },
     ...additionalMetadata,
   });
@@ -1093,7 +1121,7 @@ function buildImpaleFormula(weaponDamage, damageBonus, isMelee) {
 
   // Find the first die term to use as the extra bonus roll (e.g. "1D6")
   const dieMatch = weapStr.match(/(\d*)D(\d+)/);
-  const extraDieCount = dieMatch ? (parseInt(dieMatch[1], 10) || 1) : 1;
+  const extraDieCount = dieMatch ? parseInt(dieMatch[1], 10) || 1 : 1;
   const extraDieFaces = dieMatch ? parseInt(dieMatch[2], 10) : 6;
   const extraDie = `${extraDieCount}D${extraDieFaces} default`;
 
