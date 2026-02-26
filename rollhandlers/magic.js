@@ -19,6 +19,9 @@ const isPushed = metadata.isPushed || false;
 const isOpposedPow = metadata.isOpposedPow || false;
 const targetPow = metadata.targetPow || 0;
 const spellEffects = metadata.spellEffects || [];
+const spellDamage = metadata.spellDamage || "";
+const isMagical = metadata.isMagical || false;
+const animation = metadata.animation || null;
 const tokenId = metadata.tokenId;
 
 const rollTotal = roll.total;
@@ -113,6 +116,27 @@ if (isOpposedPow) {
     if (powCost > 0) {
       tags.push({ name: `POW -${powCost}`, tooltip: `${powCost} POW sacrificed` });
     }
+    if (isMagical && spellDamage) {
+      tags.push({ name: "Magical", tooltip: "Magical damage — ignores armor" });
+    }
+
+    // Damage roll macro if spell deals damage
+    if (spellDamage) {
+      const damageMetadata = {
+        weaponDamage: spellDamage,
+        isMelee: false,
+        isImpaling: false,
+        isExtreme: false,
+        isMagical: isMagical,
+        damageBonus: "0",
+      };
+      const damageMacro = `\`\`\`Roll_Damage
+  const damageMods = [];
+  const damageMetadata = ${JSON.stringify(damageMetadata)};
+  api.promptRoll("Damage", "${spellDamage}", damageMods, damageMetadata, "damage");
+\`\`\``;
+      message += `\n${damageMacro}`;
+    }
 
     // Embed effect application macros on success
     if (spellEffects.length > 0) {
@@ -186,3 +210,8 @@ if (isOpposedPow) {
 message += `\n\n[center][color=gray]Hard POW: ≤${skillValue}%[/color][/center]`;
 
 api.sendMessage(message, roll, [], tags);
+
+// Play animation on successful cast
+if (animation && tokenId && successLevel >= SUCCESS_LEVELS.REGULAR) {
+  api.playAnimation(animation, tokenId, null);
+}

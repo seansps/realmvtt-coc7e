@@ -43,6 +43,19 @@
     performCharacteristicRoll(record, stat, value);
   }
 
+  function rollNpcInitiative() {
+    const dex = parseInt(record?.data?.dex, 10) || 0;
+    const useRoll = api.getSetting("rollInit") === "yes";
+    const formula = useRoll ? "1d6 default" : `${dex}`;
+    const modifiers = useRoll ? [{ name: "DEX", value: dex, active: true }] : [];
+    const tooltip = useRoll ? "Initiative (1D6 + DEX)" : "Initiative (DEX Order)";
+    if (record.linked === undefined) {
+      api.promptRoll("Roll/Set Initiative", formula, modifiers, { rollName: "Initiative", tooltip }, "initiative");
+    } else {
+      api.promptRollForToken(record, "Roll/Set Initiative", formula, modifiers, { rollName: "Initiative", tooltip }, "initiative");
+    }
+  }
+
   function onSanCheckClick() {
     const san = record?.data?.san;
     if (san === undefined) return;
@@ -156,6 +169,7 @@
     <numberfield field="build" label="Build" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
     <numberfield field="mov" label="Move" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
     <numberfield field="armor" label="Armor" size="sm" width="50px" hidecontrols="true" textalign="center"></numberfield>
+    <button field="rollInitiative" label="Initiative" size="xs" color="primary" variant="subtle" onclick="rollNpcInitiative()"></button>
   </div>
 
   <!-- Token Settings -->
@@ -229,11 +243,12 @@
 
   <!-- Spells -->
   <accordion label="Spells" size="sm">
-    <richtextfield
-      field="spellsText"
-      placeholder="Known spells..."
-      height="80px"
-    ></richtextfield>
+    <list
+      listtype="spell_list"
+      field="spells"
+      variant="striped"
+      height="100%"
+    ></list>
   </accordion>
 
   <!-- Description -->

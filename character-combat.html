@@ -1,7 +1,55 @@
+<script>
+  function rollInitiative() {
+    const dex = parseInt(record?.data?.dex, 10) || 0;
+    const useRoll = api.getSetting("rollInit") === "yes";
+    const formula = useRoll ? "1d6 default" : `${dex}`;
+    const modifiers = useRoll
+      ? [{ name: "DEX", value: dex, active: true }]
+      : [];
+    const tooltip = useRoll
+      ? "Initiative (1D6 + DEX)"
+      : "Initiative (DEX Order)";
+    if (record.linked === undefined) {
+      api.promptRoll(
+        "Roll/Set Initiative",
+        formula,
+        modifiers,
+        { rollName: "Initiative", tooltip },
+        "initiative",
+      );
+    } else {
+      api.promptRollForToken(
+        record,
+        "Roll/Set Initiative",
+        formula,
+        modifiers,
+        { rollName: "Initiative", tooltip },
+        "initiative",
+      );
+    }
+  }
+</script>
 
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
   <!-- Combat Header -->
-  <label variant="bold" size="md" label="Weapons & Attacks"></label>
+  <div
+    style="
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    "
+  >
+    <label variant="bold" size="md" label="Weapons & Attacks"></label>
+    <button
+      field="rollInitiative"
+      label="Roll/Set Initiative"
+      size="xs"
+      color="primary"
+      variant="outline"
+      onclick="rollInitiative()"
+    ></button>
+  </div>
 
   <!-- Attacks List -->
   <list
@@ -77,3 +125,42 @@
     ></numberfield>
   </div>
 </div>
+
+<divider size="xs"></divider>
+
+<!-- Spells -->
+<div style="margin-top: 8px"></div>
+<label variant="bold" size="md" label="Spells"></label>
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    padding: 0 4px;
+  "
+>
+  <div style="width: 28px; min-width: 28px"></div>
+  <div style="flex: 1; min-width: 0">
+    <label size="xs" color="dimmed" label="Name"></label>
+  </div>
+  <div style="width: 48px; text-align: center">
+    <label size="xs" color="dimmed" label="MP"></label>
+  </div>
+  <div style="width: 56px; text-align: center">
+    <label size="xs" color="dimmed" label="SAN"></label>
+  </div>
+  <div style="width: 48px; text-align: center">
+    <label size="xs" color="dimmed" label="POW"></label>
+  </div>
+  <div style="width: 60px; text-align: center">
+    <label size="xs" color="dimmed" label="Dmg"></label>
+  </div>
+  <div style="width: 32px"></div>
+</div>
+<list
+  listtype="spell_list"
+  field="spells"
+  variant="striped-outline"
+  height="100%"
+></list>

@@ -7,27 +7,21 @@
 const token = data?.token;
 const dex = parseInt(token?.data?.dex, 10) || 0;
 
-// CoC uses straight DEX for initiative order (highest goes first)
-// We use a "1d1" roll with DEX as a modifier to produce the DEX value
-// through the standard roll pipeline
-const modifiers = [
-  {
-    name: "DEX",
-    value: dex,
-    active: true,
-  },
-];
+const useRoll = api.getSetting("rollInit") === "yes";
+const formula = useRoll ? "1d6 default" : `${dex}`;
+const modifiers = useRoll ? [{ name: "DEX", value: dex, active: true }] : [];
+const tooltip = useRoll ? "Initiative (1D6 + DEX)" : "Initiative (DEX Order)";
 
 const tokenName = token.name || token.record?.name;
 
 api.promptRollForToken(
   token,
   `Initiative for ${tokenName}`,
-  "0d1",
+  formula,
   modifiers,
   {
     rollName: "Initiative",
-    tooltip: "Initiative (DEX Order)",
+    tooltip,
     recordType: token.recordType === "characters" ? "characters" : "tokens",
   },
   "initiative"

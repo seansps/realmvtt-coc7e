@@ -1,69 +1,69 @@
-<script>
-  function onTypeChange(value) {
-    // Could be used to show/hide fields based on spell type
-  }
-</script>
-
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
-  <div style="display: flex; gap: 8px">
-    <div
-      style="width: 100px; height: 100px; min-width: 100px; min-height: 100px"
-    >
-      <portrait width="100px" height="100px" field="portrait"></portrait>
-    </div>
-    <div style="display: flex; flex-direction: column; gap: 4px; width: 100%">
+  <!-- Header: portrait + name area -->
+  <div style="display: flex; gap: 8px; align-items: flex-start">
+    <portrait width="72px" height="72px" field="portrait"></portrait>
+    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
       <div
         style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap"
       >
         <numberfield
           field="mpCost"
-          label="Magic Point Cost"
+          label="MP Cost"
           size="sm"
-          width="120px"
+          width="70px"
           hidecontrols="true"
           textalign="center"
           placeholder="0"
         ></numberfield>
-
         <stringfield
           field="sanCost"
-          label="Sanity Cost"
+          label="SAN Cost"
           size="sm"
-          width="80px"
+          width="70px"
           placeholder="0"
         ></stringfield>
-
         <numberfield
           field="powCost"
           label="POW Cost"
           size="sm"
-          width="80px"
+          width="70px"
           hidecontrols="true"
           textalign="center"
           placeholder="0"
         ></numberfield>
-
         <stringfield
           field="castingTime"
           label="Casting Time"
           size="sm"
-          width="120px"
+          width="90px"
           placeholder="1 round"
         ></stringfield>
+        <stringfield
+          field="damage"
+          label="Damage"
+          size="sm"
+          width="70px"
+          placeholder="1D6"
+        ></stringfield>
+      </div>
+      <div
+        style="
+          display: flex;
+          flex-direction: row;
+          gap: 12px;
+          flex-wrap: wrap;
+          align-items: center;
+        "
+      >
+        <checkbox field="opposedPow" label="Opposed POW" size="sm"></checkbox>
+        <checkbox
+          field="isMagical"
+          label="Magical (ignores armor)"
+          size="sm"
+        ></checkbox>
       </div>
     </div>
   </div>
-
-  <checkbox
-    field="opposedPow"
-    label="Requires Opposed POW Roll"
-    size="sm"
-  ></checkbox>
-  <checkbox
-    field="isMagical"
-    label="Magical Damage (ignores armor)"
-    size="sm"
-  ></checkbox>
 
   <dropdown
     field="effects"
@@ -77,18 +77,16 @@
   ></dropdown>
 
   <divider label="Description"></divider>
-
   <richtextfield
     field="description"
-    placeholder="Describe the spell, its effects, and any special requirements..."
-    height="200px"
+    placeholder="Describe the spell..."
+    height="180px"
   ></richtextfield>
 
   <divider label="Deeper Magic"></divider>
-
   <richtextfield
     field="deeper"
-    placeholder="Alternative or enhanced effects for experienced casters..."
-    height="150px"
+    placeholder="Alternative or enhanced effects..."
+    height="120px"
   ></richtextfield>
 </div>
