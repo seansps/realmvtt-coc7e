@@ -23,6 +23,7 @@ const spellDamage = metadata.spellDamage || "";
 const isMagical = metadata.isMagical || false;
 const animation = metadata.animation || null;
 const tokenId = metadata.tokenId;
+const targetId = metadata.targetId || null;
 
 const rollTotal = roll.total;
 const successLevel = getSuccessLevel(rollTotal, skillValue);
@@ -108,13 +109,19 @@ if (isOpposedPow) {
     message += `\n[center]${spellName} is cast successfully![/center]`;
 
     if (mpCost > 0) {
-      tags.push({ name: `MP -${mpCost}`, tooltip: `${mpCost} Magic Points spent` });
+      tags.push({
+        name: `MP -${mpCost}`,
+        tooltip: `${mpCost} Magic Points spent`,
+      });
     }
     if (sanCost && sanCost !== "0") {
       tags.push({ name: `SAN -${sanCost}`, tooltip: `${sanCost} Sanity lost` });
     }
     if (powCost > 0) {
-      tags.push({ name: `POW -${powCost}`, tooltip: `${powCost} POW sacrificed` });
+      tags.push({
+        name: `POW -${powCost}`,
+        tooltip: `${powCost} POW sacrificed`,
+      });
     }
     if (isMagical && spellDamage) {
       tags.push({ name: "Magical", tooltip: "Magical damage — ignores armor" });
@@ -213,5 +220,5 @@ api.sendMessage(message, roll, [], tags);
 
 // Play animation on successful cast
 if (animation && tokenId && successLevel >= SUCCESS_LEVELS.REGULAR) {
-  api.playAnimation(animation, tokenId, null);
+  api.playAnimation(animation, tokenId, targetId);
 }

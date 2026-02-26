@@ -9,6 +9,8 @@
     const spellDamage = spell.data?.damage || "";
     const isMagical = spell.data?.isMagical || false;
     const animation = spell.data?.animation || null;
+    const tokenId = api.getToken()?._id;
+    const targetId = api.getTargets()?.[0]?.token?._id || null;
 
     // Check MP
     const currentMp = parseInt(record?.data?.curMp, 10) || 0;
@@ -73,7 +75,8 @@
         spellDamage: spellDamage,
         isMagical: isMagical,
         animation: animation,
-        tokenId: api.getToken()?._id,
+        tokenId: tokenId,
+        targetId: targetId,
       };
 
       if (isOpposedPow) {
