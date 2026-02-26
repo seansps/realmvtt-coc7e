@@ -88,9 +88,9 @@
       const skills = currentRecord?.data?.skills || [];
       for (let i = 0; i < skills.length; i++) {
         if (skills[i].name === "Credit Rating") {
-          valuesToSet[`data.skills[${i}].data.value`] = cr;
-          valuesToSet[`data.skills[${i}].data.halfValue`] = getHalf(cr);
-          valuesToSet[`data.skills[${i}].data.fifthValue`] = getFifth(cr);
+          valuesToSet[`data.skills.${i}.data.value`] = cr;
+          valuesToSet[`data.skills.${i}.data.halfValue`] = getHalf(cr);
+          valuesToSet[`data.skills.${i}.data.fifthValue`] = getFifth(cr);
           break;
         }
       }

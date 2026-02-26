@@ -1,127 +1,345 @@
 <script>
-  function onTypeChange(value) {
-    const isWeapon = value === "weapon";
-    const isArmor = value === "armor";
-    const isTome = value === "tome";
-    const isArtifact = value === "artifact";
-    const isGear = !isWeapon && !isArmor && !isTome && !isArtifact;
+  function showHideFields(typeOverride) {
+    const itemDataPath = getNearestParentDataPath(dataPath);
+    const item = itemDataPath ? api.getValue(itemDataPath) : record;
+    const fieldsPath = itemDataPath ? `${itemDataPath}.fields` : "fields";
 
-    api.setValues({
+    const type = typeOverride || item?.data?.type || "gear";
+    const isWeapon = type === "weapon";
+    const isArmor = type === "armor";
+    const isTome = type === "tome";
+    const isArtifact = type === "artifact";
+    const isAmmo = type === "ammunition";
+    const isPack = type === "pack";
+
+    const desired = {
       // Weapon fields
-      "fields.damage.hidden": !isWeapon,
-      "fields.range.hidden": !isWeapon,
-      "fields.attacksPerRound.hidden": !isWeapon,
-      "fields.ammo.hidden": !isWeapon,
-      "fields.malfunction.hidden": !isWeapon,
-      "fields.skill.hidden": !isWeapon,
-      "fields.isMelee.hidden": !isWeapon,
-      "fields.isImpaling.hidden": !isWeapon,
+      damage: !isWeapon,
+      range: !isWeapon,
+      attacksPerRound: !isWeapon,
+      ammo: !isWeapon,
+      malfunction: !isWeapon,
+      skill: !isWeapon,
+      era: !isWeapon,
+      isMelee: !isWeapon,
+      isImpaling: !isWeapon,
       // Armor fields
-      "fields.armorValue.hidden": !isArmor,
+      armorValue: !isArmor,
       // Tome fields
-      "fields.mythosGain.hidden": !isTome,
-      "fields.sanCost.hidden": !isTome,
-      "fields.studyTime.hidden": !isTome,
-      "fields.spellsContained.hidden": !isTome,
-      "fields.tomeLanguage.hidden": !isTome,
+      mythosGain: !isTome,
+      sanCost: !isTome,
+      studyTime: !isTome,
+      tomeLanguage: !isTome,
       // Artifact fields
-      "fields.artifactPowers.hidden": !isArtifact,
-      "fields.artifactSanCost.hidden": !isArtifact,
-      // Common fields
-      "fields.count.hidden": isWeapon || isArmor,
-    });
+      artifactSanCost: !isArtifact,
+      // Ammunition fields
+      rounds: !isAmmo,
+      // Pack fields
+      packItems: !isPack,
+      // Rules tab animation (weapon only — controlled via items-rules.html box)
+      animationProps: !isWeapon,
+    };
+
+    const valuesToSet = {};
+    for (const [field, hidden] of Object.entries(desired)) {
+      if (item?.fields?.[field]?.hidden !== hidden) {
+        valuesToSet[`${fieldsPath}.${field}.hidden`] = hidden;
+      }
+    }
+
+    if (Object.keys(valuesToSet).length > 0) {
+      api.setValues(valuesToSet);
+    }
+  }
+
+  function onTypeChange(value) {
+    showHideFields(value);
   }
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
   <div style="display: flex; gap: 8px">
-    <div style="width: 100px; height: 100px; min-width: 100px; min-height: 100px">
+    <div
+      style="width: 100px; height: 100px; min-width: 100px; min-height: 100px"
+    >
       <portrait width="100px" height="100px" field="portrait"></portrait>
     </div>
     <div style="display: flex; flex-direction: column; gap: 4px; width: 100%">
+      <!-- Unidentified banner (replaces type dropdown area) -->
+      <box field="unidBox" hidewhenidentified="true">
+        <div
+          style="
+            display: flex;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            background-color: var(--mantine-color-tertiary-light);
+          "
+        >
+          <label
+            hidewhenidentified="true"
+            label="Unidentified Item"
+            variant="bold"
+            textalign="center"
+          ></label>
+        </div>
+      </box>
       <dropdown
-    field="type"
-    label="Item Type"
-    size="sm"
-    width="200px"
-    placeholder="Select type..."
-    onchange="onTypeChange(value)"
-    options='[
+        field="type"
+        label="Item Type"
+        size="sm"
+        width="200px"
+        placeholder="Select type..."
+        onload="showHideFields()"
+        onchange="onTypeChange(value)"
+        hidewhenidentified="false"
+        options='[
       {"label": "Weapon", "value": "weapon"},
       {"label": "Armor", "value": "armor"},
+      {"label": "Ammunition", "value": "ammunition"},
       {"label": "Gear", "value": "gear"},
       {"label": "Tome", "value": "tome"},
-      {"label": "Artifact", "value": "artifact"}
+      {"label": "Artifact", "value": "artifact"},
+      {"label": "Item Pack", "value": "pack"}
     ]'
-  ></dropdown>
+      ></dropdown>
+      <!-- Type-specific fields below the dropdown -->
+      <div
+        style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap"
+      >
+        <!-- Weapon: Skill -->
+        <dropdown
+          field="skill"
+          label="Skill"
+          size="sm"
+          width="180px"
+          placeholder="Select skill..."
+          combo="true"
+          hidden="true"
+          hidewhenidentified="false"
+          options='[
+            {"label": "Brawl", "value": "Brawl"},
+            {"label": "Axe", "value": "Axe"},
+            {"label": "Chainsaw", "value": "Chainsaw"},
+            {"label": "Flail", "value": "Flail"},
+            {"label": "Garrote", "value": "Garrote"},
+            {"label": "Spear", "value": "Spear"},
+            {"label": "Sword", "value": "Sword"},
+            {"label": "Whip", "value": "Whip"},
+            {"label": "Bow", "value": "Bow"},
+            {"label": "Handgun", "value": "Handgun"},
+            {"label": "Heavy Weapons", "value": "Heavy Weapons"},
+            {"label": "Flamethrower", "value": "Flamethrower"},
+            {"label": "Machine Gun", "value": "Machine Gun"},
+            {"label": "Rifle/Shotgun", "value": "Rifle/Shotgun"},
+            {"label": "Submachine Gun", "value": "Submachine Gun"},
+            {"label": "Throw", "value": "Throw"}
+          ]'
+        ></dropdown>
+        <!-- Weapon: Era -->
+        <stringfield
+          field="era"
+          label="Era"
+          size="sm"
+          width="120px"
+          placeholder="1920s, Modern"
+          hidden="true"
+          hidewhenidentified="false"
+        ></stringfield>
+        <!-- Armor: Armor Points -->
+        <numberfield
+          field="armorValue"
+          label="Armor Points"
+          size="sm"
+          width="80px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="0"
+          hidden="true"
+          hidewhenidentified="false"
+        ></numberfield>
+        <!-- Tome: Mythos Gain, SAN Cost, Study Time, Language -->
+        <numberfield
+          field="mythosGain"
+          label="Mythos Gain"
+          size="sm"
+          width="80px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="0"
+          hidden="true"
+          hidewhenidentified="false"
+        ></numberfield>
+        <stringfield
+          field="sanCost"
+          label="SAN Cost"
+          size="sm"
+          width="80px"
+          placeholder="0"
+          hidden="true"
+          hidewhenidentified="false"
+        ></stringfield>
+        <stringfield
+          field="studyTime"
+          label="Study Time"
+          size="sm"
+          width="120px"
+          placeholder=""
+          hidden="true"
+          hidewhenidentified="false"
+        ></stringfield>
+        <stringfield
+          field="tomeLanguage"
+          label="Language"
+          size="sm"
+          width="120px"
+          placeholder=""
+          hidden="true"
+          hidewhenidentified="false"
+        ></stringfield>
+        <!-- Artifact: SAN Cost -->
+        <stringfield
+          field="artifactSanCost"
+          label="SAN Cost"
+          size="sm"
+          width="80px"
+          placeholder="0"
+          hidden="true"
+          hidewhenidentified="false"
+        ></stringfield>
+        <!-- Ammunition: Rounds Included -->
+        <numberfield
+          field="rounds"
+          label="Rounds Included"
+          size="sm"
+          width="100px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="1"
+          hidden="true"
+          hidewhenidentified="false"
+        ></numberfield>
+      </div>
+      <!-- Cost (all item types) -->
+      <stringfield
+        field="cost"
+        label="Cost"
+        size="sm"
+        width="120px"
+        placeholder="$0/$0"
+        hidewhenidentified="false"
+      ></stringfield>
     </div>
   </div>
 
-  <!-- Common -->
-  <numberfield
-    field="count"
-    label="Quantity"
-    size="sm"
-    width="60px"
-    hidecontrols="true"
-    textalign="center"
-    placeholder="1"
-  ></numberfield>
-
   <!-- Weapon Fields -->
   <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
-    <stringfield field="damage" label="Damage" size="sm" width="100px" placeholder="1D6" hidden="true"></stringfield>
-    <stringfield field="range" label="Range" size="sm" width="80px" placeholder="" hidden="true"></stringfield>
-    <numberfield field="attacksPerRound" label="Attacks/Round" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="1" hidden="true"></numberfield>
-    <numberfield field="ammo" label="Ammo" size="sm" width="60px" hidecontrols="true" textalign="center" placeholder="0" hidden="true"></numberfield>
-    <numberfield field="malfunction" label="Malfunction" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="100" hidden="true"></numberfield>
+    <stringfield
+      field="damage"
+      label="Damage"
+      size="sm"
+      width="100px"
+      placeholder="1D6"
+      hidden="true"
+      hidewhenidentified="false"
+    ></stringfield>
+    <stringfield
+      field="range"
+      label="Base Range"
+      size="sm"
+      width="80px"
+      placeholder=""
+      hidden="true"
+      hidewhenidentified="false"
+    ></stringfield>
+    <stringfield
+      field="attacksPerRound"
+      label="Uses/Rnd"
+      size="sm"
+      width="100px"
+      placeholder="1"
+      hidden="true"
+      hidewhenidentified="false"
+    ></stringfield>
+    <numberfield
+      field="ammo"
+      label="Mag"
+      size="sm"
+      width="60px"
+      hidecontrols="true"
+      textalign="center"
+      placeholder="0"
+      hidden="true"
+      hidewhenidentified="false"
+    ></numberfield>
+    <numberfield
+      field="malfunction"
+      label="Malfunction"
+      size="sm"
+      width="80px"
+      hidecontrols="true"
+      textalign="center"
+      placeholder="100"
+      hidden="true"
+      hidewhenidentified="false"
+    ></numberfield>
   </div>
   <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
-    <stringfield field="skill" label="Skill" size="sm" width="180px" placeholder="Fighting: Brawl" hidden="true"></stringfield>
-    <checkbox field="isMelee" label="Melee Weapon" size="sm" hidden="true"></checkbox>
-    <checkbox field="isImpaling" label="Impaling" size="sm" hidden="true"></checkbox>
+    <checkbox
+      field="isMelee"
+      label="Melee Weapon"
+      size="sm"
+      hidden="true"
+      hidewhenidentified="false"
+    ></checkbox>
+    <checkbox
+      field="isImpaling"
+      label="Impaling"
+      size="sm"
+      hidden="true"
+      hidewhenidentified="false"
+    ></checkbox>
   </div>
+  <!-- Pack Fields -->
+  <box field="packItems" hidden="true">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <divider label="Pack Contents" hidewhenidentified="false"></divider>
+      <list
+        listtype="pack_item_list"
+        field="items"
+        variant="striped-outline"
+        height="100%"
+        hidewhenidentified="false"
+      ></list>
+      <stringfield
+        field="packCash"
+        label="Cash Included"
+        size="sm"
+        width="120px"
+        placeholder="$0"
+        hidewhenidentified="false"
+      ></stringfield>
+    </div>
+  </box>
 
-  <!-- Armor Fields -->
-  <numberfield field="armorValue" label="Armor Points" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="0" hidden="true"></numberfield>
-
-  <!-- Tome Fields -->
-  <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap">
-    <numberfield field="mythosGain" label="Mythos Gain" size="sm" width="80px" hidecontrols="true" textalign="center" placeholder="0" hidden="true"></numberfield>
-    <stringfield field="sanCost" label="SAN Cost" size="sm" width="80px" placeholder="0" hidden="true"></stringfield>
-    <stringfield field="studyTime" label="Study Time" size="sm" width="120px" placeholder="" hidden="true"></stringfield>
-    <stringfield field="tomeLanguage" label="Language" size="sm" width="120px" placeholder="" hidden="true"></stringfield>
-  </div>
-  <richtextfield
-    field="spellsContained"
-    placeholder="Spells contained in this tome..."
-    height="100px"
-    hidden="true"
-  ></richtextfield>
-
-  <!-- Artifact Fields -->
-  <stringfield field="artifactSanCost" label="SAN Cost" size="sm" width="80px" placeholder="0" hidden="true"></stringfield>
-  <richtextfield
-    field="artifactPowers"
-    placeholder="Describe the artifact's powers and properties..."
-    height="150px"
-    hidden="true"
-  ></richtextfield>
-
-  <!-- Modifiers -->
-  <divider label="Modifiers"></divider>
-  <list
-    listtype="modifier_list"
-    field="modifiers"
-    variant="striped"
-    height="100%"
-  ></list>
-
-  <!-- Description (all types) -->
-  <divider label="Description"></divider>
+  <!-- Description (identified) -->
+  <divider label="Description" hidewhenidentified="false"></divider>
   <richtextfield
     field="description"
     placeholder="Item description..."
     height="150px"
+    hidewhenidentified="false"
   ></richtextfield>
+
+  <!-- Unidentified Description -->
+  <divider label="Description" hidewhenidentified="true"></divider>
+  <stringfield
+    field="unidentifiedDescription"
+    label="Unidentified Description"
+    placeholder="Enter description shown when unidentified..."
+    multiline="true"
+    hidewhenidentified="true"
+  ></stringfield>
 </div>

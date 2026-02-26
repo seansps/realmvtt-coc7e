@@ -96,6 +96,9 @@
         fieldsToSet[`data.skills.${i}.data.value`] = newValue;
         fieldsToSet[`data.skills.${i}.data.halfValue`] = getHalf(newValue);
         fieldsToSet[`data.skills.${i}.data.fifthValue`] = getFifth(newValue);
+        fieldsToSet["data.dodgeValue"] = newValue;
+        fieldsToSet["data.dodgeHalf"] = getHalf(newValue);
+        fieldsToSet["data.dodgeFifth"] = getFifth(newValue);
         break;
       }
     }
@@ -130,6 +133,29 @@
       isLuck: true,
       cannotPush: true,
     });
+  }
+
+  function onImproveLuck() {
+    const luck = parseInt(record?.data?.luck, 10) || 0;
+    if (luck >= 99) {
+      api.showNotification(
+        "Luck is already at maximum (99).",
+        "yellow",
+        "Luck",
+      );
+      return;
+    }
+    api.promptRoll(
+      "Improve Luck",
+      "1d100 default",
+      [],
+      {
+        luckValue: luck,
+        recordType: record.recordType,
+        recordId: record._id,
+      },
+      "luckImprovement",
+    );
   }
 
   function onSanCheckClick() {
@@ -729,6 +755,13 @@
           textalign="center"
           editable="false"
         ></numberfield>
+        <iconbutton
+          field="improveLuckBtn"
+          size="xs"
+          variant="subtle"
+          options='[{"icon": "IconTrendingUp", "label": "Improve Luck", "value": "improve"}]'
+          onclick="onImproveLuck()"
+        ></iconbutton>
       </div>
     </div>
 

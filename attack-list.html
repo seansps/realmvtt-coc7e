@@ -1,58 +1,208 @@
 <script>
+  function ammoOptions() {
+    const inventory = record?.data?.inventory || [];
+    return inventory
+      .filter((item) => item.data?.type === "ammunition")
+      .map((ammo) => ({
+        value: ammo._id,
+        label:
+          ammo.identified !== false
+            ? ammo.name
+            : ammo.unidentifiedName || ammo.name,
+      }));
+  }
+
+  function onAmmoSelectChange(value) {
+    const inventory = record?.data?.inventory || [];
+    const ammo = inventory.find((item) => item._id === value);
+    const attackDataPath = getNearestParentDataPath(dataPath);
+    api.setValues({
+      [`${attackDataPath}.data.currentAmmo`]: ammo?.data?.count || 0,
+    });
+  }
+
+  function onAmmoChange() {
+    const attackDataPath = getNearestParentDataPath(dataPath);
+    const attack = api.getValue(attackDataPath);
+    const ammoSelected = attack?.data?.ammoSelect;
+    if (!ammoSelected) return;
+
+    const newAmmoCount = attack?.data?.currentAmmo;
+    const inventory = record?.data?.inventory || [];
+    const valuesToSet = {};
+
+    inventory.forEach((item, index) => {
+      // Sync back to the inventory ammo item
+      if (item._id === ammoSelected) {
+        valuesToSet[`data.inventory.${index}.data.count`] = newAmmoCount;
+      }
+      // Sync sibling weapons sharing the same ammo
+      if (item.data?.ammoSelect === ammoSelected && item._id !== attack._id) {
+        valuesToSet[`data.inventory.${index}.data.currentAmmo`] = newAmmoCount;
+      }
+    });
+
+    if (Object.keys(valuesToSet).length > 0) {
+      api.setValues(valuesToSet);
+    }
+  }
+
+  function reload() {
+    const attackDataPath = getNearestParentDataPath(dataPath);
+    const attack = api.getValue(attackDataPath);
+    const magSize = parseInt(attack?.data?.ammo, 10) || 0;
+    const currentAmmo = parseInt(attack?.data?.currentAmmo, 10) || 0;
+    const ammoSelected = attack?.data?.ammoSelect;
+
+    if (magSize <= 0) {
+      api.showNotification(
+        "This weapon does not use ammunition.",
+        "yellow",
+        "Reload",
+      );
+      return;
+    }
+    if (currentAmmo >= magSize) {
+      api.showNotification("Already fully loaded.", "yellow", "Reload");
+      return;
+    }
+    if (!ammoSelected) {
+      api.showNotification("Select an ammo type first.", "red", "Reload");
+      return;
+    }
+
+    const inventory = record?.data?.inventory || [];
+    const ammoItem = inventory.find((item) => item._id === ammoSelected);
+    if (!ammoItem) {
+      api.showNotification(
+        "Ammo item not found in inventory.",
+        "red",
+        "Reload",
+      );
+      return;
+    }
+
+    const ammoIndex = inventory.indexOf(ammoItem);
+    const availableRounds = parseInt(ammoItem.data?.count, 10) || 0;
+    if (availableRounds <= 0) {
+      api.showNotification("No ammunition remaining!", "red", "Reload");
+      return;
+    }
+
+    const amountNeeded = magSize - currentAmmo;
+    const amountToLoad = Math.min(availableRounds, amountNeeded);
+    const newWeaponAmmo = currentAmmo + amountToLoad;
+    const newInventoryCount = availableRounds - amountToLoad;
+
+    const valuesToSet = {
+      [`${attackDataPath}.data.currentAmmo`]: newWeaponAmmo,
+      [`data.inventory.${ammoIndex}.data.count`]: newInventoryCount,
+    };
+
+    // Sync sibling weapons sharing the same ammo
+    inventory.forEach((item, index) => {
+      if (item.data?.ammoSelect === ammoSelected && item._id !== attack._id) {
+        valuesToSet[`data.inventory.${index}.data.currentAmmo`] = newWeaponAmmo;
+      }
+    });
+
+    api.setValues(valuesToSet);
+    api.showNotification(
+      `Loaded ${amountToLoad} round${amountToLoad !== 1 ? "s" : ""}. ${newInventoryCount} remaining.`,
+      "green",
+      "Reload",
+    );
+  }
+
   function onRollAttack() {
     const attackPath = dataPath.replace(".data.rollAttack", "");
     const attack = api.getValue(attackPath);
     const weaponName = attack.name || "Attack";
-    const skillValue = parseInt(attack.data?.skillValue, 10) || 0;
+    const skillName = attack.data?.skill || "Brawl";
     const isMelee = attack.data?.isMelee || false;
     const isFirearm = !isMelee;
 
+    // Look up skill value dynamically from the character's current skill list
+    const skillValue = getSkillValue(record, skillName);
+
+    // Determine animation: use stored override or auto-detect
+    const animation =
+      attack.data?.animation ||
+      getAnimationFor({ weaponName, isMelee, skillName });
+
     const weaponData = {
       name: weaponName,
+      skillName: skillName,
       damage: attack.data?.damage || "1D3",
       range: attack.data?.range || "",
-      attacksPerRound: attack.data?.attacksPerRound || 1,
+      attacksPerRound: attack.data?.attacksPerRound || "1",
       ammo: attack.data?.ammo || 0,
       currentAmmo: attack.data?.currentAmmo || 0,
       malfunction: attack.data?.malfunction || 100,
       isImpaling: attack.data?.isImpaling || false,
       isMelee: isMelee,
       itemId: attack.data?.fromId || attack._id,
+      animation: animation,
     };
 
     // Collect damage modifiers from equipped items/effects
     const attackField = isMelee ? "melee" : "ranged";
     const damageMods = getEffectsAndModifiers(
-      ["damageBonus", "damagePenalty"], attackField, weaponData.itemId);
+      ["damageBonus", "damagePenalty"],
+      attackField,
+      weaponData.itemId,
+    );
     weaponData.damageModifiers = damageMods;
 
     // Check ammo for firearms
     if (isFirearm && weaponData.currentAmmo <= 0 && weaponData.ammo > 0) {
-      api.showNotification("Out of ammunition!", "red", weaponName);
+      api.showNotification(
+        "Out of ammunition! Reload first.",
+        "red",
+        weaponName,
+      );
       return;
     }
 
     if (isMelee) {
-      performOpposedAttack(record, weaponName, skillValue, weaponData);
+      performOpposedAttack(record, weaponName, skillValue, weaponData, {
+        animation,
+      });
     } else {
-      performFirearmAttack(record, weaponName, skillValue, weaponData);
+      performFirearmAttack(record, weaponName, skillValue, weaponData, {
+        animation,
+      });
 
       // Deduct ammo
       if (weaponData.ammo > 0) {
         const newAmmo = Math.max(0, weaponData.currentAmmo - 1);
-        api.setValues({
+        const valuesToSet = {
           [`${attackPath}.data.currentAmmo`]: newAmmo,
-        });
+        };
+
+        // Sync to inventory ammo item and sibling attacks
+        const ammoSelected = attack.data?.ammoSelect;
+        if (ammoSelected) {
+          const inventory = record?.data?.inventory || [];
+          inventory.forEach((item, index) => {
+            if (item._id === ammoSelected) {
+              valuesToSet[`data.inventory.${index}.data.count`] = newAmmo;
+            }
+          });
+
+          inventory.forEach((item, index) => {
+            if (
+              item.data?.ammoSelect === ammoSelected &&
+              item._id !== attack._id
+            ) {
+              valuesToSet[`data.inventory.${index}.data.currentAmmo`] = newAmmo;
+            }
+          });
+        }
+
+        api.setValues(valuesToSet);
       }
     }
-  }
-
-  function onAmmoChange(value) {
-    // Sync current ammo when manually edited
-  }
-
-  function onSkillValueChange(value) {
-    // Manual skill value override for this weapon
   }
 </script>
 
@@ -61,102 +211,122 @@
   style="
     display: flex;
     flex-direction: row;
-    gap: 4px;
-    align-items: center;
+    gap: 6px;
+    align-items: stretch;
     min-width: 100px;
+    padding: 2px 0;
   "
 >
-  <!-- Weapon Portrait -->
-  <portrait field="portrait" width="28px" height="28px"></portrait>
+  <!-- Portrait -->
+  <portrait field="portrait" width="48px" height="48px"></portrait>
 
-  <!-- Weapon Name -->
-  <div style="min-width: 80px; width: 100%">
-    <namefield
-      placeholder="Weapon..."
-      size="xs"
-      width="100%"
-      field="name"
-      variant="unstyled"
-      bold="true"
-    ></namefield>
+  <!-- Main content: two rows -->
+  <div
+    style="
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    "
+  >
+    <!-- Row 1: Name + buttons -->
+    <div
+      style="display: flex; flex-direction: row; gap: 4px; align-items: center"
+    >
+      <div style="flex: 1; min-width: 80px">
+        <namefield
+          placeholder="Weapon..."
+          size="xs"
+          width="100%"
+          field="name"
+          variant="unstyled"
+          bold="true"
+        ></namefield>
+      </div>
+      <iconbutton
+        field="reloadBtn"
+        size="sm"
+        variant="subtle"
+        options='[{"icon": "IconReload", "label": "Reload", "value": "reload"}]'
+        onclick="reload()"
+      ></iconbutton>
+      <iconbutton
+        field="rollAttack"
+        size="sm"
+        variant="light"
+        options='[{"icon": "D100", "label": "Roll Attack", "value": "roll"}]'
+        onclick="onRollAttack()"
+      ></iconbutton>
+    </div>
+
+    <!-- Row 2: Stats -->
+    <div
+      style="
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      "
+    >
+      <stringfield
+        field="skill"
+        size="xs"
+        width="90px"
+        label="Skill"
+        editable="false"
+      ></stringfield>
+      <stringfield
+        field="damage"
+        placeholder="1D6"
+        size="xs"
+        width="65px"
+        label="Damage"
+      ></stringfield>
+      <stringfield
+        field="range"
+        placeholder=""
+        size="xs"
+        width="55px"
+        label="Range"
+      ></stringfield>
+      <stringfield
+        placeholder="1"
+        size="xs"
+        width="65px"
+        field="attacksPerRound"
+        label="Uses/Rnd"
+      ></stringfield>
+      <dropdown
+        field="ammoSelect"
+        width="110px"
+        size="xs"
+        placeholder="Ammo..."
+        optionsFunction="return ammoOptions();"
+        onchange="onAmmoSelectChange(value)"
+      ></dropdown>
+      <numberfield
+        placeholder="0"
+        size="xs"
+        width="48px"
+        field="currentAmmo"
+        label="Loaded"
+        hidecontrols="true"
+        textalign="center"
+        onchange="onAmmoChange()"
+      ></numberfield>
+      <numberfield
+        placeholder="100"
+        size="xs"
+        width="100px"
+        field="malfunction"
+        label="Malfunction"
+        hidecontrols="true"
+        textalign="center"
+      ></numberfield>
+      <checkbox field="isMelee" label="Melee" size="xs"></checkbox>
+      <checkbox field="isImpaling" label="Impale" size="xs"></checkbox>
+    </div>
   </div>
-
-  <!-- Skill % -->
-  <numberfield
-    placeholder="0"
-    size="xs"
-    width="42px"
-    field="skillValue"
-    label="Skill%"
-    hidecontrols="true"
-    textalign="center"
-    onchange="onSkillValueChange(value)"
-  ></numberfield>
-
-  <!-- Damage -->
-  <stringfield
-    field="damage"
-    placeholder="1D6"
-    size="xs"
-    width="65px"
-    label="Damage"
-  ></stringfield>
-
-  <!-- Range -->
-  <stringfield
-    field="range"
-    placeholder=""
-    size="xs"
-    width="55px"
-    label="Range"
-  ></stringfield>
-
-  <!-- Attacks/Round -->
-  <numberfield
-    placeholder="1"
-    size="xs"
-    width="36px"
-    field="attacksPerRound"
-    label="# Att"
-    hidecontrols="true"
-    textalign="center"
-  ></numberfield>
-
-  <!-- Current Ammo -->
-  <numberfield
-    placeholder="0"
-    size="xs"
-    width="42px"
-    field="currentAmmo"
-    label="Ammo"
-    hidecontrols="true"
-    textalign="center"
-    onchange="onAmmoChange(value)"
-  ></numberfield>
-
-  <!-- Malfunction -->
-  <numberfield
-    placeholder="100"
-    size="xs"
-    width="36px"
-    field="malfunction"
-    label="Malf"
-    hidecontrols="true"
-    textalign="center"
-  ></numberfield>
-
-  <!-- Melee toggle -->
-  <checkbox field="isMelee" label="Melee" size="xs"></checkbox>
-
-  <!-- Impaling toggle -->
-  <checkbox field="isImpaling" label="Impale" size="xs"></checkbox>
-
-  <!-- Roll Button -->
-  <iconbutton
-    field="rollAttack"
-    size="md"
-    variant="light"
-    options='[{"icon": "D100", "label": "Roll Attack", "value": "roll"}]'
-    onclick="onRollAttack()"
-  ></iconbutton>
 </div>

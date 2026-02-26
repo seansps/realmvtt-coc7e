@@ -1,0 +1,40 @@
+<!-- Pack Item Row -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+    height: 30px;
+  "
+>
+  <!-- Portrait -->
+  <div style="width: 28px; min-width: 28px">
+    <portrait width="28px" height="28px" field="portrait"></portrait>
+  </div>
+
+  <!-- Item Name -->
+  <div style="min-width: 100px; flex: 1">
+    <namefield
+      placeholder="Item..."
+      size="xs"
+      width="100%"
+      field="name"
+      variant="unstyled"
+      bold="true"
+    ></namefield>
+  </div>
+
+  <!-- Quantity -->
+  <numberfield
+    placeholder="1"
+    size="xs"
+    width="42px"
+    field="count"
+    label="Qty"
+    variant="tooltip"
+    hidecontrols="true"
+    textalign="center"
+  ></numberfield>
+</div>

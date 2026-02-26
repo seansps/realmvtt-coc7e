@@ -26,6 +26,7 @@ const isLuck = metadata.isLuck || false;
 const weapon = metadata.weapon || null;
 const tokenId = metadata.tokenId;
 const targetId = metadata.targetId;
+const animation = metadata.animation || null;
 
 // ============================================================
 // Resolve Bonus/Penalty Dice
@@ -146,10 +147,18 @@ if (isCharacteristic) {
 }
 
 if (isAttack) {
+  const attackType = isMelee ? "Melee" : "Ranged";
+  const weaponSkillName = weapon?.skillName || skillName;
   tags.push({
-    name: "Attack",
-    tooltip: isMelee ? "Melee attack (opposed)" : "Ranged attack",
+    name: `${attackType} Attack`,
+    tooltip: `${weaponSkillName} — ${attackType.toLowerCase()} attack`,
   });
+  if (weaponSkillName && weaponSkillName !== skillName) {
+    tags.push({
+      name: weaponSkillName,
+      tooltip: `Skill: ${weaponSkillName} (${skillValue}%)`,
+    });
+  }
 }
 
 // Add success level tag
@@ -409,3 +418,8 @@ if (isAttack && isFirearm && !isOpposed) {
 
 // Send the message
 api.sendMessage(message, roll, [], tags);
+
+// Play attack animation if this is an attack roll
+if (isAttack && animation && tokenId) {
+  api.playAnimation(animation, tokenId, targetId);
+}

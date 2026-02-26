@@ -48,6 +48,16 @@ api.getRecord(recType, recId, (rec) => {
     valuesToSet[`data.skills.${skillIndex}.data.value`] = newValue;
     valuesToSet[`data.skills.${skillIndex}.data.halfValue`] = getHalf(newValue);
     valuesToSet[`data.skills.${skillIndex}.data.fifthValue`] = getFifth(newValue);
+
+    // Sync derived display fields for special skills
+    if (skillName === "Dodge") {
+      valuesToSet["data.dodgeValue"] = newValue;
+      valuesToSet["data.dodgeHalf"] = getHalf(newValue);
+      valuesToSet["data.dodgeFifth"] = getFifth(newValue);
+    }
+    if (skillName === "Credit Rating") {
+      valuesToSet["data.creditRating"] = newValue;
+    }
   }
 
   if (Object.keys(valuesToSet).length > 0) {

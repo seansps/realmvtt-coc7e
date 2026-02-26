@@ -1,0 +1,43 @@
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+  <!-- Equipped Effect -->
+  <dropdown
+    width="100%"
+    field="equipEffect"
+    size="sm"
+    label="Equipped Effect"
+    description="Effect applied to the token when this item is equipped"
+    placeholder="Select Effect if Applicable..."
+    optionsquery='{"type": "effects", "query": {}}'
+    hidewhenidentified="false"
+  ></dropdown>
+
+  <!-- Attack Animation (weapons only) -->
+  <box field="animationProps" hidden="true">
+    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px">
+      <divider label="Attack Animation" hidewhenidentified="false"></divider>
+      <fxcontrol
+        field="animation"
+        label="Attack Animation"
+        hidewhenidentified="false"
+      ></fxcontrol>
+    </div>
+  </box>
+
+  <!-- Modifiers (hidden when unidentified) -->
+  <divider label="Modifiers" hidewhenidentified="false"></divider>
+  <list
+    listtype="modifier_list"
+    field="modifiers"
+    variant="striped"
+    height="100%"
+    hidewhenidentified="false"
+  ></list>
+
+  <!-- Shown when unidentified -->
+  <label
+    hidewhenidentified="true"
+    label="Item Unidentified"
+    size="sm"
+    textalign="center"
+  ></label>
+</div>

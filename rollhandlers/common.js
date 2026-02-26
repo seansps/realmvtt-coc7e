@@ -15,6 +15,11 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+const getNearestParentDataPath = (dataPath) => {
+  const parts = dataPath.split(".data");
+  return parts.length > 1 ? parts.slice(0, -1).join(".data") : "";
+};
+
 // ============================================================
 // Success Level System
 // ============================================================
@@ -167,6 +172,25 @@ function recalcDerivedStats(fieldsToSet, rec) {
   const luck = parseInt(rec?.data?.luck, 10) || 0;
   fieldsToSet["data.luckHalf"] = Math.floor(luck / 2);
   fieldsToSet["data.luckFifth"] = Math.floor(luck / 5);
+
+  // Sync Dodge and Credit Rating display fields from the skill list.
+  // Skip if already queued in fieldsToSet (e.g. updateDodgeBase already set the correct value).
+  const needsDodge = !("data.dodgeValue" in fieldsToSet);
+  const needsCr = !("data.creditRating" in fieldsToSet);
+  if (needsDodge || needsCr) {
+    const skills = rec?.data?.skills || [];
+    for (const skill of skills) {
+      if (needsDodge && skill.name === "Dodge") {
+        const dodgeVal = parseInt(skill.data?.value, 10) || 0;
+        fieldsToSet["data.dodgeValue"] = dodgeVal;
+        fieldsToSet["data.dodgeHalf"] = getHalf(dodgeVal);
+        fieldsToSet["data.dodgeFifth"] = getFifth(dodgeVal);
+      }
+      if (needsCr && skill.name === "Credit Rating") {
+        fieldsToSet["data.creditRating"] = parseInt(skill.data?.value, 10) || 0;
+      }
+    }
+  }
 }
 
 // ============================================================
@@ -352,11 +376,15 @@ function performSkillCheck(
   // Collect modifiers for this roll
   const modifiers = [];
 
+  // For attacks, pass the weapon's itemId so itemOnly modifiers are included
+  const weaponItemId = additionalMetadata.weapon?.itemId;
+
   // Skill bonus/penalty modifiers (match by skill name)
   const skillMods = getEffectsAndModifiersForToken(
     rec,
     ["skillBonus", "skillPenalty"],
     skillName,
+    weaponItemId,
   );
   modifiers.push(...skillMods);
 
@@ -366,11 +394,13 @@ function performSkillCheck(
     rec,
     ["bonusDie"],
     skillName,
+    weaponItemId,
   );
   const penaltyDice = getEffectsAndModifiersForToken(
     rec,
     ["penaltyDie"],
     skillName,
+    weaponItemId,
   );
 
   // For characteristic rolls, also check modifiers targeting the stat abbreviation
@@ -428,11 +458,13 @@ function performSkillCheck(
       rec,
       ["bonusDie"],
       attackField,
+      weaponItemId,
     );
     const attackPenaltyDice = getEffectsAndModifiersForToken(
       rec,
       ["penaltyDie"],
       attackField,
+      weaponItemId,
     );
     bonusDieCount =
       (metadata.bonusDice || 0) +
@@ -517,7 +549,13 @@ function performOpposedAttack(
     isAttack: true,
     isMelee: true,
     isOpposed: true,
-    weapon: weaponData,
+    weapon: {
+      damage: weaponData.damage,
+      isImpaling: weaponData.isImpaling,
+      itemId: weaponData.itemId,
+      skillName: weaponData.skillName,
+      malfunction: weaponData.malfunction,
+    },
     ...additionalMetadata,
   });
 }
@@ -533,7 +571,13 @@ function performFirearmAttack(
     isAttack: true,
     isFirearm: true,
     isOpposed: false,
-    weapon: weaponData,
+    weapon: {
+      damage: weaponData.damage,
+      isImpaling: weaponData.isImpaling,
+      itemId: weaponData.itemId,
+      skillName: weaponData.skillName,
+      malfunction: weaponData.malfunction,
+    },
     ...additionalMetadata,
   });
 }
@@ -883,6 +927,105 @@ function findSkillByName(rec, skillName) {
 function getSkillValue(rec, skillName) {
   const skill = findSkillByName(rec, skillName);
   return skill?.data?.value || 0;
+}
+
+// ============================================================
+// Animation Helpers
+// ============================================================
+
+function getAnimationFor({ weaponName, isMelee, skillName }) {
+  const animation = {
+    moveToDestination: !isMelee,
+    stretchToDestination: false,
+    destinationOnly: false,
+    startAtCenter: false,
+    count: 1,
+  };
+
+  const name = (weaponName || "").toLowerCase();
+  const skill = (skillName || "").toLowerCase();
+
+  if (isMelee) {
+    // Brawl / unarmed
+    if (
+      skill === "brawl" ||
+      name.includes("fist") ||
+      name.includes("punch") ||
+      name.includes("kick")
+    ) {
+      animation.animationName = "bludgeon_1";
+      animation.sound = "bludgeon_1";
+    } else if (
+      name.includes("club") ||
+      name.includes("bat") ||
+      name.includes("mace") ||
+      name.includes("hammer") ||
+      name.includes("staff") ||
+      name.includes("pipe") ||
+      name.includes("cane") ||
+      name.includes("stick")
+    ) {
+      animation.animationName = "bludgeon_1";
+      animation.sound = "bludgeon_1";
+    } else if (
+      name.includes("whip") ||
+      name.includes("flail") ||
+      name.includes("chain")
+    ) {
+      animation.animationName = "slash_1";
+      animation.sound = "whip_1";
+    } else if (
+      name.includes("spear") ||
+      name.includes("lance") ||
+      name.includes("pike")
+    ) {
+      animation.animationName = "slash_1";
+      animation.sound = "slash_1";
+    } else {
+      // Default melee: slash (covers swords, knives, axes, etc.)
+      animation.animationName = "slash_1";
+      animation.sound = "slash_1";
+    }
+  } else {
+    // Ranged — default gun
+    animation.animationName = "bullet_2";
+    animation.sound = "gun_1";
+    // Bow/crossbow
+    if (
+      skill === "bow" ||
+      name.includes("bow") ||
+      name.includes("arrow") ||
+      name.includes("crossbow") ||
+      name.includes("bolt")
+    ) {
+      animation.animationName = "arrow_1";
+      animation.sound = "arrow_1";
+    }
+    // Thrown
+    if (
+      skill === "throw" ||
+      name.includes("throw") ||
+      name.includes("grenade") ||
+      name.includes("rock")
+    ) {
+      animation.animationName = "bludgeon_1";
+      animation.sound = "bludgeon_1";
+      animation.moveToDestination = true;
+      animation.destinationOnly = true;
+    }
+    // Heavy weapons / explosives
+    if (
+      skill === "heavy weapons" ||
+      name.includes("cannon") ||
+      name.includes("grenade")
+    ) {
+      animation.animationName = "bludgeon_1";
+      animation.sound = "explosive_1";
+      animation.destinationOnly = true;
+    }
+  }
+
+  return animation;
 }
 
 // ============================================================

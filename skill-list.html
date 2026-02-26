@@ -17,6 +17,18 @@
       fieldsToSet["data.maxSan"] = 99 - val;
     }
 
+    // Dodge: sync derived display fields on combat tab
+    if (skill?.name === "Dodge") {
+      fieldsToSet["data.dodgeValue"] = val;
+      fieldsToSet["data.dodgeHalf"] = getHalf(val);
+      fieldsToSet["data.dodgeFifth"] = getFifth(val);
+    }
+
+    // Credit Rating: sync top-level field used on inventory tab
+    if (skill?.name === "Credit Rating") {
+      fieldsToSet["data.creditRating"] = val;
+    }
+
     api.setValues(fieldsToSet);
   }
 
