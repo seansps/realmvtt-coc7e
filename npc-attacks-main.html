@@ -1,0 +1,73 @@
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 4px">
+
+  <!-- Header: Portrait + Name -->
+  <div style="display: flex; flex-direction: row; gap: 8px; align-items: flex-start">
+    <portrait field="portrait" width="72px" height="72px"></portrait>
+    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+      <label variant="bold" size="sm" label="Attack"></label>
+      <div style="display: flex; flex-direction: row; gap: 8px; flex-wrap: wrap; align-items: flex-end">
+        <numberfield
+          field="skillValue"
+          label="Skill %"
+          size="sm"
+          width="70px"
+          hidecontrols="true"
+          textalign="center"
+          placeholder="0"
+        ></numberfield>
+        <stringfield
+          field="damage"
+          label="Damage"
+          size="sm"
+          width="80px"
+          placeholder="1D6"
+        ></stringfield>
+        <stringfield
+          field="range"
+          label="Range"
+          size="sm"
+          width="80px"
+          placeholder="Touch"
+        ></stringfield>
+        <stringfield
+          field="attacksPerRound"
+          label="Uses/Rnd"
+          size="sm"
+          width="80px"
+          placeholder="1"
+        ></stringfield>
+      </div>
+    </div>
+  </div>
+
+  <divider size="xs"></divider>
+
+  <!-- Properties -->
+  <div style="display: flex; flex-direction: row; gap: 12px; flex-wrap: wrap; align-items: center">
+    <checkbox field="isMelee" label="Melee" size="sm"></checkbox>
+    <checkbox field="isImpaling" label="Impaling" size="sm"></checkbox>
+    <checkbox field="isMagical" label="Magical" size="sm"></checkbox>
+  </div>
+
+  <divider size="xs"></divider>
+
+  <!-- Animation Override -->
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <label variant="bold" size="sm" label="Animation Override"></label>
+    <label size="xs" color="dimmed" label="Leave blank to auto-detect from attack name."></label>
+    <fxcontrol field="animation" label="Attack Animation"></fxcontrol>
+  </div>
+
+  <divider size="xs"></divider>
+
+  <!-- Notes -->
+  <div style="display: flex; flex-direction: column; gap: 4px">
+    <label variant="bold" size="sm" label="Notes"></label>
+    <richtextfield
+      field="notes"
+      placeholder="Attack notes, special rules..."
+      height="120px"
+    ></richtextfield>
+  </div>
+
+</div>

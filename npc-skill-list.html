@@ -1,0 +1,91 @@
+<script>
+  function onNpcSkillValueChange(value) {
+    const val = parseInt(value, 10);
+    if (isNaN(val)) return;
+    const pathToSkill = dataPath.replace(".data.value", "");
+    api.setValues({
+      [`${pathToSkill}.data.value`]: val,
+      [`${pathToSkill}.data.halfValue`]: getHalf(val),
+      [`${pathToSkill}.data.fifthValue`]: getFifth(val),
+    });
+  }
+
+  function onRollNpcSkill() {
+    const skillDataPath = dataPath.replace(".data.rollSkill", "");
+    const skill = api.getValue(skillDataPath);
+    const skillName = skill.name || "Skill";
+    const skillValue = skill.data?.value || 0;
+    performSkillCheck(record, skillName, skillValue, { cannotPush: false });
+  }
+</script>
+
+<!-- NPC Skill Row: name | value | half | fifth | roll -->
+<div
+  style="
+    display: flex;
+    flex-direction: row;
+    gap: 4px;
+    align-items: center;
+    min-width: 100px;
+  "
+>
+  <!-- Skill Name -->
+  <div style="flex: 1; min-width: 0">
+    <namefield
+      placeholder="Skill name..."
+      size="xs"
+      width="100%"
+      field="namefield"
+      variant="unstyled"
+      bold="true"
+    ></namefield>
+  </div>
+
+  <!-- Value -->
+  <div style="min-width: 42px; width: 42px">
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="100%"
+      field="value"
+      hidecontrols="true"
+      textalign="center"
+      onchange="onNpcSkillValueChange(value)"
+    ></numberfield>
+  </div>
+
+  <!-- Half -->
+  <div style="min-width: 36px; width: 36px">
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="100%"
+      field="halfValue"
+      hidecontrols="true"
+      textalign="center"
+      editable="false"
+    ></numberfield>
+  </div>
+
+  <!-- Fifth -->
+  <div style="min-width: 36px; width: 36px">
+    <numberfield
+      placeholder="0"
+      size="xs"
+      width="100%"
+      field="fifthValue"
+      hidecontrols="true"
+      textalign="center"
+      editable="false"
+    ></numberfield>
+  </div>
+
+  <!-- Roll -->
+  <iconbutton
+    field="rollSkill"
+    size="md"
+    variant="light"
+    options='[{"icon": "D100", "label": "Roll Skill", "value": "roll"}]'
+    onclick="onRollNpcSkill()"
+  ></iconbutton>
+</div>
